@@ -12,3 +12,7 @@ ChessEx is an Elixir project implementing tools related to Chess, including an e
 - https://en.wikipedia.org/wiki/Chess_symbols_in_Unicode
 - https://en.wikipedia.org/wiki/Chess_engine
 - https://en.wikipedia.org/wiki/Universal_Chess_Interface
+
+## documentation
+
+- [the rules of Chess](doc/RULES.md)
