@@ -29,7 +29,8 @@ Ordered roughly by dependency.
 
 - [ ] Tests for `Chess.Move` and `Chess.Game` once implemented (currently no
   coverage for them; `test/chess_test.exs` is a dummy leftover from `mix new`).
-- [ ] Fill in `doc/RULES.md` (currently a stub: title + SVG).
+- [x] Fill in `doc/RULES.md` — core moves done; draws section still open
+  (see its TODO).
 - [ ] README: usage examples (`iex -S mix`, `Board.print/1`) — no runnable
   example exists yet.
 - [ ] Consider adding Credo/Dialyzer and CI; today `mix format` is the only

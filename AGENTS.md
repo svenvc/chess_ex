@@ -41,7 +41,8 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
 
 ## Docs
 
-- `doc/RULES.md` (stub) and `doc/UNICODE.md` (12 piece glyphs) are the local
-  domain references; a board SVG lives in `doc/`.
+- `doc/RULES.md` is the compact rule set to implement against (draws still
+  marked TODO); `doc/UNICODE.md` lists the 12 piece glyphs. A board SVG lives
+  in `doc/`.
 - README's Wikipedia links (FEN, PGN, algebraic notation, UCI) are the
   roadmap for notations not yet implemented.
