@@ -25,7 +25,9 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   (32 entries for `Board.initial/0`). Always read squares via `Board.at/2`; it
   accepts a map or a keyword list of `{position, piece}` tuples. Don't access
   the container directly from new code.
-- `Chess.Game` and `Chess.Move` are **empty stubs** — the intended next modules.
+- `Chess.Move` = `{from, to}` tuple of position atoms, with syntax-only
+  validation (`Move.is_valid?/1` does not check legality). `Chess.Game` is
+  still an empty stub — the intended next module.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
 

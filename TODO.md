@@ -5,8 +5,10 @@ Ordered roughly by dependency.
 
 ## Core game logic
 
-- [ ] `Chess.Move` (currently an empty stub): move representation, legal move
-  generation per piece, check/checkmate/stalemate detection.
+- [x] `Chess.Move` representation: `{from, to}` tuple with `new/2`, plus
+  syntax-only `is_valid?/1`.
+- [ ] `Chess.Move` legality: legal move generation per piece,
+  check/checkmate/stalemate detection.
 - [ ] `Chess.Game` (currently an empty stub): game state, turn switching,
   move application, castling / en passant / promotion, draw conditions.
 - [x] Board lookup: `Board.at/2` added (returns `nil` for empty squares,
@@ -29,8 +31,8 @@ Ordered roughly by dependency.
 
 ## Tests & docs
 
-- [ ] Tests for `Chess.Move` and `Chess.Game` once implemented (currently no
-  coverage for them; `test/chess_test.exs` is a dummy leftover from `mix new`).
+- [ ] Tests for `Chess.Game` once implemented (it is the only module without
+  coverage; `test/chess_test.exs` is a dummy leftover from `mix new`).
 - [x] Fill in `doc/RULES.md` — core moves done; draws section still open
   (see its TODO).
 - [ ] README: usage examples (`iex -S mix`, `Board.print/1`) — no runnable
