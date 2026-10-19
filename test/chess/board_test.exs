@@ -33,4 +33,33 @@ defmodule Chess.BoardTest do
     assert initial_board_map[:d1] == :Q
     assert initial_board_map[:d8] == :q
   end
+
+  test "at/2 returns the piece at a position" do
+    initial_board = Board.initial()
+
+    assert Board.at(initial_board, :d1) == :Q
+    assert Board.at(initial_board, :d8) == :q
+    assert Board.at(initial_board, :e1) == :K
+    assert Board.at(initial_board, :e8) == :k
+    assert Board.at(initial_board, :a2) == :P
+    assert Board.at(initial_board, :h7) == :p
+  end
+
+  test "at/2 returns nil for an empty square" do
+    initial_board = Board.initial()
+
+    assert Board.at(initial_board, :d4) == nil
+    assert Board.at(initial_board, :e4) == nil
+    assert Board.at(initial_board, :a4) == nil
+  end
+
+  test "at/2 rejects an invalid position" do
+    # values are built dynamically so the compiler's type checking
+    # doesn't flag these intentionally invalid calls
+    invalid_position = String.to_atom("z9")
+    invalid_type = IO.iodata_to_binary([?d, ?4])
+
+    assert_raise FunctionClauseError, fn -> Board.at(Board.initial(), invalid_position) end
+    assert_raise FunctionClauseError, fn -> Board.at(Board.initial(), invalid_type) end
+  end
 end

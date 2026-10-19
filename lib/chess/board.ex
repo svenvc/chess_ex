@@ -7,6 +7,8 @@ defmodule Chess.Board do
 
   alias Chess.Position
 
+  @positions Position.all()
+
   @doc """
   Create and return the initial Chess board.
   This is a list of 32 {position, piece} tuples.
@@ -27,12 +29,20 @@ defmodule Chess.Board do
     |> List.flatten()
   end
 
+  @doc """
+  Return the piece at the given position,
+  or nil if the square is empty.
+  """
+  def at(board, position) when position in @positions do
+    board |> Keyword.get(position)
+  end
+
   def to_ascii(board) do
     8..1//-1
     |> Enum.map(fn rank ->
       1..8
       |> Enum.map(fn file_index ->
-        to_string(board |> Keyword.get(Position.new(file_index, rank), "."))
+        to_string(board |> at(Position.new(file_index, rank)) || ".")
       end)
       |> Enum.join(" ")
     end)

@@ -9,8 +9,8 @@ Ordered roughly by dependency.
   generation per piece, check/checkmate/stalemate detection.
 - [ ] `Chess.Game` (currently an empty stub): game state, turn switching,
   move application, castling / en passant / promotion, draw conditions.
-- [ ] Board lookup: add a non-keyword accessor (e.g. `Board.at/2`) so callers
-  don't reach for `Keyword.get/2` directly.
+- [x] Board lookup: `Board.at/2` added (returns `nil` for empty squares,
+  raises on invalid positions); `to_ascii/1` now uses it.
 
 ## Notations (README scope, nothing implemented yet)
 
