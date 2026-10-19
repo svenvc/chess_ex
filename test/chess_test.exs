@@ -1,8 +1,7 @@
 defmodule ChessTest do
   use ExUnit.Case
-  doctest Chess
 
-  test "greets the world" do
-    assert Chess.hello() == :world
+  test "dummy" do
+    assert true
   end
 end

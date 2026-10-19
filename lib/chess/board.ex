@@ -1,10 +1,16 @@
 defmodule Chess.Board do
   @moduledoc """
   Functionality related to a Chess board.
+
+  A Chess board is a list of {position, piece} tuples.
   """
 
   alias Chess.Position
 
+  @doc """
+  Create and return the initial Chess board.
+  This is a list of 32 {position, piece} tuples.
+  """
   def initial do
     [
       Position.files()
