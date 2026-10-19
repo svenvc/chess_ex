@@ -26,4 +26,18 @@ defmodule Chess.Board do
     ]
     |> List.flatten()
   end
+
+  def to_ascii(board) do
+    8..1//-1
+    |> Enum.map(fn rank ->
+      1..8
+      |> Enum.map(fn file_index ->
+        to_string(board |> Keyword.get(Position.new(file_index, rank), "."))
+      end)
+      |> Enum.join(" ")
+    end)
+    |> Enum.join("\n")
+  end
+
+  def print(board), do: IO.puts(to_ascii(board))
 end
