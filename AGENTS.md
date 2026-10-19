@@ -46,3 +46,9 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   in `doc/`.
 - README's Wikipedia links (FEN, PGN, algebraic notation, UCI) are the
   roadmap for notations not yet implemented.
+
+## Not part of the project
+
+- `.expert/` is local tooling state: an Elixir code-indexing/LSP server
+  (Expert/XPForge) keeps its build cache, indexes, and logs there and ignores
+  itself via its own `.gitignore`. Don't delete, edit, or commit it.

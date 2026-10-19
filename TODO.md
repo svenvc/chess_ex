@@ -36,6 +36,3 @@ Ordered roughly by dependency.
 - [ ] Consider adding Credo/Dialyzer and CI; today `mix format` is the only
   quality gate.
 
-## Housekeeping
-
-- [ ] `.expert/` holds untracked agent logs — not part of the project.
