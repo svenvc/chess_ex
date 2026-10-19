@@ -70,7 +70,7 @@
 
     <!-- Labels ============================================================ -->
     <!-- file labels (a-h) along bottom and top -->
-    <g font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#f00" text-anchor="middle">
+    <g font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#f00" text-anchor="middle">
         <text x="30"  y="508">a</text>
         <text x="90"  y="508">b</text>
         <text x="150" y="508">c</text>
@@ -81,7 +81,7 @@
         <text x="450" y="508">h</text>
     </g>
     <!-- rank labels (8-1) along left and right -->
-    <g font-family="Arial, Helvetica, sans-serif" font-size="14" fill="#f00" text-anchor="middle">
+    <g font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#f00" text-anchor="middle">
         <text x="514" y="30">8</text>
         <text x="514" y="90">7</text>
         <text x="514" y="150">6</text>
