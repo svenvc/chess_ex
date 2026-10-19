@@ -2,7 +2,9 @@ defmodule Chess.Board do
   @moduledoc """
   Functionality related to a Chess board.
 
-  A Chess board is a list of {position, piece} tuples.
+  A Chess board is a map of `position => piece`, containing only occupied
+  squares. `at/2` also accepts a keyword list of `{position, piece}` tuples
+  for convenience.
   """
 
   alias Chess.Position
@@ -11,7 +13,7 @@ defmodule Chess.Board do
 
   @doc """
   Create and return the initial Chess board.
-  This is a list of 32 {position, piece} tuples.
+  This is a map of 32 `{position, piece}` entries.
   """
   def initial do
     [
@@ -27,14 +29,21 @@ defmodule Chess.Board do
       |> Enum.map(fn file -> {Position.new(file, 7), :p} end)
     ]
     |> List.flatten()
+    |> Map.new()
   end
 
   @doc """
   Return the piece at the given position,
   or nil if the square is empty.
+
+  Accepts either a board map or a keyword list of `{position, piece}` tuples.
   """
-  def at(board, position) when position in @positions do
-    board |> Keyword.get(position)
+  def at(board, position) when is_map(board) and position in @positions do
+    Map.get(board, position)
+  end
+
+  def at(board, position) when is_list(board) and position in @positions do
+    Keyword.get(board, position)
   end
 
   def to_ascii(board) do

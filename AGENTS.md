@@ -21,9 +21,10 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   established style; there are no `{:error, _}` returns anywhere.
 - **Piece** = atom; **uppercase = white** (`:K :Q :R :B :N :P`), lowercase =
   black (`:k :q :r :b :n :p`). Knight is `:N`.
-- **Board** = list of `{position, piece}` tuples, only occupied squares
-  (32 for `Board.initial/0`). `Board.to_ascii/1` uses `Keyword.get/2`, so the
-  list must keep keyword-list shape — do not "optimize" it into a map.
+- **Board** = map of `position => piece`, only occupied squares
+  (32 entries for `Board.initial/0`). Always read squares via `Board.at/2`; it
+  accepts a map or a keyword list of `{position, piece}` tuples. Don't access
+  the container directly from new code.
 - `Chess.Game` and `Chess.Move` are **empty stubs** — the intended next modules.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.

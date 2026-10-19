@@ -11,6 +11,8 @@ Ordered roughly by dependency.
   move application, castling / en passant / promotion, draw conditions.
 - [x] Board lookup: `Board.at/2` added (returns `nil` for empty squares,
   raises on invalid positions); `to_ascii/1` now uses it.
+- [x] Board representation: canonical form is now a `%{position => piece}` map;
+  `at/2` also accepts keyword lists at the API boundary.
 
 ## Notations (README scope, nothing implemented yet)
 

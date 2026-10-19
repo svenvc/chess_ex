@@ -28,10 +28,28 @@ defmodule Chess.BoardTest do
     assert initial_pieces |> Enum.count(&Piece.is_knight?/1) == 4
     assert initial_pieces |> Enum.count(&Piece.is_pawn?/1) == 16
 
-    initial_board_map = initial_board |> Map.new()
+    assert Board.at(initial_board, :d1) == :Q
+    assert Board.at(initial_board, :d8) == :q
+  end
 
-    assert initial_board_map[:d1] == :Q
-    assert initial_board_map[:d8] == :q
+  test "initial/0 returns a map of occupied squares" do
+    initial_board = Board.initial()
+
+    assert is_map(initial_board)
+    assert map_size(initial_board) == 32
+  end
+
+  test "at/2 accepts both a map and a keyword list" do
+    map_board = Board.initial()
+    list_board = Map.to_list(map_board)
+
+    assert Board.at(map_board, :d1) == :Q
+    assert Board.at(list_board, :d1) == :Q
+    assert Board.at(list_board, :d4) == nil
+
+    for position <- Position.all() do
+      assert Board.at(map_board, position) == Board.at(list_board, position)
+    end
   end
 
   test "at/2 returns the piece at a position" do
@@ -61,5 +79,9 @@ defmodule Chess.BoardTest do
 
     assert_raise FunctionClauseError, fn -> Board.at(Board.initial(), invalid_position) end
     assert_raise FunctionClauseError, fn -> Board.at(Board.initial(), invalid_type) end
+
+    assert_raise FunctionClauseError, fn ->
+      Board.at(Map.to_list(Board.initial()), invalid_position)
+    end
   end
 end
