@@ -17,8 +17,12 @@ defmodule Chess.Position do
     "#{file}#{rank}" |> String.to_atom()
   end
 
-  def from_string(string) when is_binary(string) do
-    nil
+  def new(file_index, rank) when file_index in 1..8 and rank in @ranks do
+    new(Enum.at(@files, file_index - 1), rank)
+  end
+
+  def from_string(<<letter, digit>>) when letter in ?a..?h and digit in ?1..?8 do
+    new(String.to_atom(<<letter>>), String.to_integer(<<digit>>))
   end
 
   @all @ranks

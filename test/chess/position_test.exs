@@ -15,5 +15,10 @@ defmodule Chess.PositionTest do
     assert Position.rank(position) == 1
 
     assert Position.new(Position.file(position), Position.rank(position)) == position
+    assert Position.new(Position.file_index(position), Position.rank(position)) == position
+  end
+
+  test "parsing" do
+    assert Position.from_string("a1") == :a1
   end
 end
