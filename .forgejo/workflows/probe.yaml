@@ -6,17 +6,15 @@ on:
 
 jobs:
 
-  with-options:
+  verify:
 
-    name: probe with options
+    name: verify runner-level add-host
 
     runs-on: ubuntu-24.04
 
     container:
 
       image: docker.gitea.com/runner-images:ubuntu-24.04
-
-      options: --add-host=git.stfx.eu:169.254.1.2
 
     steps:
 
@@ -28,26 +26,14 @@ jobs:
 
       run: cat /etc/hosts && getent hosts git.stfx.eu
 
-    - name: keep alive for inspection
+    - name: pids check
 
-      run: sleep 600
+      run: |
 
-  without-options:
+        cg=$(awk -F: '{print $3}' /proc/self/cgroup | head -1)
 
-    name: probe without options
-
-    runs-on: ubuntu-24.04
-
-    container:
-
-      image: docker.gitea.com/runner-images:ubuntu-24.04
-
-    steps:
-
-    - name: node check
-
-      run: node -e "console.log('node ok')"
+        echo "pids.max=$(cat /sys/fs/cgroup$cg/pids.max) pids.current=$(cat /sys/fs/cgroup$cg/pids.current)"
 
     - name: keep alive for inspection
 
-      run: sleep 600
+      run: sleep 300
