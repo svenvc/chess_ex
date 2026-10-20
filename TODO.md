@@ -45,3 +45,19 @@ Ordered roughly by dependency.
 - [ ] Consider adding Credo/Dialyzer and CI; today `mix format` is the only
   quality gate.
 
+## Performance notes
+
+- Perft depth 4 dominates the test suite: ~1.0s (92% of total), ~5.1 µs/node.
+  Depth 3 takes ~40ms (~4.4 µs/node).
+- `Rules.legal_moves/1` from the initial position takes ~98 µs: ~15 µs of
+  generation and ~50 µs of check filtering (~20 × `in_check?`, ~2.45 µs each).
+  `Rules.apply/2` is only ~0.47 µs, so avoiding the `Game` struct would save
+  little.
+- Conclusion: don't optimize the engine yet; readability matters more. Real wins
+  need precomputed neighbour/ray tables, board-only legality, king tracking or
+  bitboards — engine-level design work that should wait for an actual search
+  engine and benchmarking.
+- [ ] If suite time matters later: keep perft 3 in the default run and tag
+  depth 4 `@tag :slow`, excluded in `test_helper.exs`, run with
+  `mix test --include slow`.
+
