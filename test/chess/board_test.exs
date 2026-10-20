@@ -84,4 +84,50 @@ defmodule Chess.BoardTest do
       Board.at(Map.to_list(Board.initial()), invalid_position)
     end
   end
+
+  test "pieces/2 returns the pieces of one color" do
+    initial_board = Board.initial()
+
+    white = Board.pieces(initial_board, :white)
+    black = Board.pieces(initial_board, :black)
+
+    assert length(white) == 16
+    assert length(black) == 16
+    assert {:d1, :Q} in white
+    assert {:d8, :q} in black
+  end
+
+  test "king/2 returns the king position" do
+    initial_board = Board.initial()
+
+    assert Board.king(initial_board, :white) == :e1
+    assert Board.king(initial_board, :black) == :e8
+    assert Board.king(%{}, :white) == nil
+  end
+
+  test "put/3 and remove/2" do
+    board = Board.initial()
+
+    assert board |> Board.remove(:e2) |> Board.at(:e2) == nil
+    assert board |> Board.put(:e4, :Q) |> Board.at(:e4) == :Q
+    assert board |> Board.put(:d1, :N) |> Board.at(:d1) == :N
+  end
+
+  test "move/3 relocates a piece and captures" do
+    board = Board.initial()
+
+    moved = Board.move(board, :e2, :e4)
+
+    assert Board.at(moved, :e2) == nil
+    assert Board.at(moved, :e4) == :P
+
+    captured = Board.move(board, :d1, :d8)
+
+    assert Board.at(captured, :d1) == nil
+    assert Board.at(captured, :d8) == :Q
+  end
+
+  test "move/3 requires a piece on the from square" do
+    assert_raise KeyError, fn -> Board.move(Board.initial(), :e4, :e5) end
+  end
 end

@@ -25,11 +25,23 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   (32 entries for `Board.initial/0`). Always read squares via `Board.at/2`; it
   accepts a map or a keyword list of `{position, piece}` tuples. Don't access
   the container directly from new code.
-- `Chess.Move` = `{from, to}` tuple of position atoms, with syntax-only
-  validation (`Move.is_valid?/1` does not check legality). `Chess.Game` is
-  still an empty stub — the intended next module.
+- `Chess.Move` — tagged-tuple value type, syntax-only validation via
+  `Move.is_valid?/1`: `{from, to}` normal (incl. captures),
+  `{:castle, from, to}` (king squares), `{:en_passant, from, to}`,
+  `{:promotion, from, to, piece}`. Constructors: `new/2`, `castle/2`,
+  `en_passant/2`, `promotion/3`.
+- `Chess.Rules` — `attacked?/3`, `in_check?/1,2`, `pseudo_legal_moves/1`,
+  `legal_moves/1`, `legal_move?/2`, `apply/2`, `checkmate?/1`, `stalemate?/1`.
+  It defines `apply/2`, shadowing `Kernel.apply/2` via
+  `import Kernel, except: [apply: 2]` — don't remove that line.
+- `Chess.Game` — struct (`board`, `side_to_move`, `castling`, `en_passant`,
+  `moves`); `Game.new/0` is the initial position. `moves` is newest-first.
+  Castling rights and the en passant target live here because they **cannot**
+  be derived from the board alone. Generation/applying go through `Chess.Rules`.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
+  `rules_test.exs` includes perft from the initial position
+  (20 / 400 / 8902 / 197281), which is the main regression net for generation.
 
 ## Conventions that differ from defaults
 

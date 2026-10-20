@@ -5,14 +5,19 @@ Ordered roughly by dependency.
 
 ## Core game logic
 
-- [x] `Chess.Move` representation: `{from, to}` tuple with `new/2`, plus
-  syntax-only `is_valid?/1`.
-- [ ] `Chess.Move` legality: legal move generation per piece,
-  check/checkmate/stalemate detection.
-- [ ] `Chess.Game` (currently an empty stub): game state, turn switching,
-  move application, castling / en passant / promotion, draw conditions.
+- [x] `Chess.Move` representation: tagged tuples for normal, castling,
+  en passant and promotion moves, with constructors and syntax-only
+  `is_valid?/1`.
+- [x] `Chess.Rules`: legal move generation per piece and per side, attack
+  detection, check/checkmate/stalemate, move application (incl. special moves).
+  Validated by perft (20 / 400 / 8902 / 197281).
+- [x] `Chess.Game` state struct: board, side to move, castling rights,
+  en passant target, move history.
+- [ ] `Chess.Game` orchestration: draw conditions (threefold repetition,
+  fifty-move rule, insufficient material) and game status/winner.
 - [x] Board lookup: `Board.at/2` added (returns `nil` for empty squares,
   raises on invalid positions); `to_ascii/1` now uses it.
+- [x] Board primitives: `pieces/2`, `king/2`, `put/3`, `remove/2`, `move/3`.
 - [x] Board representation: canonical form is now a `%{position => piece}` map;
   `at/2` also accepts keyword lists at the API boundary.
 
@@ -31,8 +36,8 @@ Ordered roughly by dependency.
 
 ## Tests & docs
 
-- [ ] Tests for `Chess.Game` once implemented (it is the only module without
-  coverage; `test/chess_test.exs` is a dummy leftover from `mix new`).
+- [x] Tests for all modules, including perft from the initial position
+  (`test/chess_test.exs` is still a dummy leftover from `mix new`).
 - [x] Fill in `doc/RULES.md` — core moves done; draws section still open
   (see its TODO).
 - [ ] README: usage examples (`iex -S mix`, `Board.print/1`) — no runnable
