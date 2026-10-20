@@ -1,0 +1,53 @@
+name: probe
+
+on:
+
+  workflow_dispatch:
+
+jobs:
+
+  with-options:
+
+    name: probe with options
+
+    runs-on: ubuntu-24.04
+
+    container:
+
+      image: docker.gitea.com/runner-images:ubuntu-24.04
+
+      options: --add-host=git.stfx.eu:169.254.1.2
+
+    steps:
+
+    - name: node check
+
+      run: node -e "console.log('node ok')"
+
+    - name: hosts check
+
+      run: cat /etc/hosts && getent hosts git.stfx.eu
+
+    - name: keep alive for inspection
+
+      run: sleep 600
+
+  without-options:
+
+    name: probe without options
+
+    runs-on: ubuntu-24.04
+
+    container:
+
+      image: docker.gitea.com/runner-images:ubuntu-24.04
+
+    steps:
+
+    - name: node check
+
+      run: node -e "console.log('node ok')"
+
+    - name: keep alive for inspection
+
+      run: sleep 600
