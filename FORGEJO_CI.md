@@ -3,7 +3,8 @@
 Last updated: 2026-10-20 — ✅ DONE. Real `Elixir CI` run (push) is green:
 checkout, setup-beam, deps, format, compile, tests all pass. Job containers
 run with `network="host"` (config loaded via `--config`). Probe workflow
-removed. Open follow-ups: wcx, optional upstream bug reports.
+removed. wcx (Elixir) and wc (Python) both rerun green on the same runner.
+Only open follow-up: optional upstream bug reports.
 
 ## Goal
 
@@ -86,9 +87,8 @@ no `container.options` anywhere. Real CI run on push is **green**.
 3. ✅ Daemon restarted; probe #81 confirms `network="host"`.
 4. ✅ Real ci.yaml run green (checkout/fetch succeeds over host network).
 5. ✅ `.forgejo/workflows/probe.yaml` removed.
-6. **wcx** (<https://git.stfx.eu/sven/wcx>): runner config is global, so it
-   inherits the fix; just make sure its workflow doesn't use
-   `container.options`.
+6. ✅ **wcx** (Elixir, <https://git.stfx.eu/sven/wcx>) and **wc** (Python)
+   reran green when triggered manually — the runner fix is global.
 7. Optional upstream report: the `|N` marshal round-trip bug
    (<https://codeberg.org/go-yaml/yaml> / runner jobparser) and the
    PidsLimit=0 options bug (still present in v12.10.2–v13.2.0).
