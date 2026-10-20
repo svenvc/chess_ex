@@ -1,6 +1,9 @@
-# Forgejo CI — status & open issues
+# Forgejo CI — status & open issues (thread TODO)
 
-Last updated: 2026-10-20
+Last updated: 2026-10-20 — ✅ DONE. Real `Elixir CI` run (push) is green:
+checkout, setup-beam, deps, format, compile, tests all pass. Job containers
+run with `network="host"` (config loaded via `--config`). Probe workflow
+removed. Open follow-ups: wcx, optional upstream bug reports.
 
 ## Goal
 
@@ -8,89 +11,103 @@ Last updated: 2026-10-20
 <https://git.stfx.eu/sven/wcx/src/branch/main/.forgejo/workflows/ci.yaml>
 (release job and "Verify OS" step skipped). Gates: `mix deps.get`,
 `mix format --check-formatted`, `mix compile --warnings-as-errors`, `mix test`
-(Elixir 1.20 / OTP 28 via setup-beam). All gates verified locally; file is
-committed and pushed (ci.yaml itself is **fine** — it parses on the server).
+(Elixir 1.20 / OTP 28 via setup-beam). Committed & pushed; ci.yaml itself is
+fine (parses on the server, all gates pass locally).
 
 ## Infrastructure
 
 - ds9: Forgejo 16.0.4 (rootless podman) + forgejo-runner **v12.10.2**
-  (separate user `forgejo-runner`, socket
-  `unix:///run/user/1002/podman/podman.sock`, `capacity: 1`).
-- Live runner config: `/home/forgejo-runner/config.yml` on ds9.
-- Job containers must reach `git.stfx.eu` via `--add-host=git.stfx.eu:169.254.1.2`
-  (host gateway = `host.containers.internal`).
+  (user `forgejo-runner`, socket `unix:///run/user/1002/podman/podman.sock`,
+  `capacity: 1`, daemon started **Oct 18**).
+- Runner service: `~/.config/systemd/user/forgejo-runner.service`,
+  `ExecStart=/home/forgejo-runner/bin/forgejo-runner daemon` (no `--config`!),
+  `WorkingDirectory=/home/forgejo-runner`, `Environment=DOCKER_HOST=…podman.sock`.
+- `/home/forgejo-runner/config.yml` is correct (`container:` at 180,
+  `network: "host"` at 184, `options: "--add-host=…"` at 191) but **was never
+  loaded** — see root cause above. Runner ran on defaults: no network mode,
+  no options, capacity 1, labels/registration from `.runner` in cwd.
+- Job containers must be able to reach `git.stfx.eu` (served by ds9 itself,
+  public IP 157.173.107.19). Rootless podman hairpin to that public IP from a
+  bridge-network container is refused; host network and bridge +
+  `--add-host=…:169.254.1.2` both work (manual proofs).
 
-## Problem 1 — checkout failures (solved in theory, verification pending)
+## Probe run results (dispatch works again ✓)
 
-Two independent root causes were found:
+The dispatch 500 (`workflow.Dispatch: SetJob: yaml: line 8`) was fixed by
+removing blank lines inside probe.yaml's `run: |` block scalar. Forgejo's
+`SetJob` re-marshals each job with `go.yaml.in/yaml/v3`; a block scalar whose
+value starts with a blank line is emitted with an explicit indent indicator
+(`|4`) that the same library's parser misreads. (Reproduced locally against
+Forgejo v16.0.4 + runner v12.13.2 jobparser; upstream-worthy bug.)
 
-1. **PidsLimit bug**: runner v12.10.2 serializes `"PidsLimit": 0` into the
-   container create request **whenever the workflow's `container.options` is
-   non-empty**. Podman turns that into cgroup `pids.max=1` → nothing can fork
-   (`fork: retry: Resource temporarily unavailable`, node
-   `uv_thread_create` assertion). Proven via `podman inspect` diff
-   (with options: `PidsLimit: 0`, `pids.max: 1`; without: `PidsLimit: 2048`).
-   Therefore `container.options` must **not** be used in the workflow file.
-2. **Rootless networking**: act_runner ignores config `network: "host"` for
-   jobs with a `container:` block (always creates a `WORKFLOW-…` bridge
-   network) → rootless podman hairpin to the host's public IP
-   (157.173.107.19:443) is refused → `git fetch` fails. A manual
-   `--add-host=git.stfx.eu:169.254.1.2` on a bridge network works (verified
-   with curl: HTTP/2 200).
+- Probe runs #79/#80 verdicts:
+  - `node ok`, `pids.max=2048` — no fork problems.
+  - `--add-host` **not applied**: no `git.stfx.eu` in the container's
+    `/etc/hosts`; `getent` resolved via DNS to the public IP (broken hairpin).
+  - Daemon restarted (PID …746 → …249), still `WORKFLOW-…` bridge network,
+    still no options.
+- Probe run #81 (after `--config` fix): ✅ `docker create … network="host"`,
+  no `WORKFLOW-…` network create/cleanup, job runs normally.
+- Root cause (final): the unit runs `forgejo-runner daemon` without
+  `--config`; v12.10.2 `--config` defaults to `""`, and `config.FromFile("")`
+  logs "No configuration file specified; using default settings." and
+  **skips the file**. `cwd`/`WorkingDirectory`/key placement were all red
+  herrings — the file was simply never read.
+- v12.10.2 source: keys `container.network` / `container.options` are
+  applied verbatim (`applyTo`) and mapped per task
+  (`internal/app/run/runner.go:369-370`); `getNetworkName` prefers
+  `ContainerNetworkMode` and the bridge create is skipped when set.
 
-**Plan A (current)**: runner-level `container.options: "--add-host=git.stfx.eu:169.254.1.2"`
-added to `config.yml` under `container:` — applies to all jobs without putting
-options in the workflow (avoids bug 1). **Not yet verified** (blocked by
-problem 2).
+## Findings from runner source (v12.10.2, v13.1.0, v13.2.0)
 
-Fallbacks: **Plan B** upgrade runner v12.10.2 → v13.1.0; **Plan C** drop the
-`container:` block from the job and test whether config `network: "host"`
-applies to container-less jobs.
+- **PidsLimit bug is NOT fixed in any released runner** (checked through
+  v13.2.0): `parseOptions` always builds `PidsLimit: &copts.pidsLimit`
+  (CLI default 0) and `mergo.WithOverride` merges that non-nil pointer over
+  the real host config. Triggers on **any** non-empty options string —
+  workflow-level *and* runner-config-level. → **Plan A (runner-level
+  `options: --add-host`) is dead; Plan B (runner upgrade) does not fix it.**
+- Config `container.network` IS honored by code: mapped to
+  `ContainerNetworkMode` (`internal/app/run/runner.go:370`), preferred over
+  the `WORKFLOW-…` bridge network (`run_context.go:ensureNetworkName`),
+  passed as `NetworkMode` to the job container, and the bridge network
+  create is skipped when set.
+- `--config` defaults to `""` (not `config.yml`) in v12.10.2
+  (`internal/app/cmd/cmd.go:27-28` + `internal/pkg/config/config.go:570-575`)
+  — the flag is mandatory to load a config file.
 
-## Problem 2 — dispatch HTTP 500 (root cause found, fix pending)
+## Outcome
 
-Dispatching any workflow (probe.yaml) from the web UI fails with:
+Config `container.network: "host"` is live (config loaded via `--config`),
+no `container.options` anywhere. Real CI run on push is **green**.
 
-```
-workflow.Dispatch: SetJob: yaml: line 8: did not find expected key
-```
+1. ✅ `--config /home/forgejo-runner/config.yml` added to the unit's
+   ExecStart + `daemon-reload`.
+2. ✅ `options:` line removed from config.yml; `network: "host"` kept.
+3. ✅ Daemon restarted; probe #81 confirms `network="host"`.
+4. ✅ Real ci.yaml run green (checkout/fetch succeeds over host network).
+5. ✅ `.forgejo/workflows/probe.yaml` removed.
+6. **wcx** (<https://git.stfx.eu/sven/wcx>): runner config is global, so it
+   inherits the fix; just make sure its workflow doesn't use
+   `container.options`.
+7. Optional upstream report: the `|N` marshal round-trip bug
+   (<https://codeberg.org/go-yaml/yaml> / runner jobparser) and the
+   PidsLimit=0 options bug (still present in v12.10.2–v13.2.0).
 
-**Root cause** (reproduced locally against exact server code: Forgejo v16.0.4
-+ its dependency runner v12.13.2 jobparser):
+## History / notes
 
-- Forgejo's dispatch calls `jobparser.Parse` → `SingleWorkflow.SetJob`, which
-  **round-trips** the job: `yaml.Marshal(job)` then `yaml.Unmarshal` of the
-  result (lib: `go.yaml.in/yaml/v3` v3.0.4).
-- If a step's block scalar (`run: |`) **value starts with a blank line**, the
-  emitter writes an explicit indentation indicator (`run: |4`) whose base
-  disagrees with the library's own parser (emitter counts from the sequence
-  indent, parser from the mapping indent) → the block ends up empty, the
-  following content lines are parsed as YAML at the wrong level →
-  "did not find expected key".
-- Trigger in this repo: the **pids check step in `.forgejo/workflows/probe.yaml`**
-  (`run: |` followed by a blank line, in the repo's blank-line-everywhere
-  style). Bisected and confirmed: removing only the leading blank line inside
-  the block (or all blank lines inside it) parses fine; ci.yaml and the old
-  probe.yaml (d3c35bb) parse fine. Plain yaml.v2/v3 parse the raw file without
-  error — only the marshal round-trip fails, which is why it only broke
-  dispatch (not pushes).
+- `network: "host"` works on rootless podman via the host netns; the
+  container resolves `git.stfx.eu` to the public IP and connects fine
+  (manual proof + probe #81).
+- The PidsLimit=0 bug remains latent: never re-add `container.options`
+  (workflow- or runner-level) on runner ≤ v13.2.0.
 
-**Fix applied** (2026-10-20): `probe.yaml` rewritten without blank lines
-inside the block scalar (compact block). Verified against the exact server
-code path (Forgejo v16.0.4 + runner v12.13.2 `jobparser.Parse`, SetJob
-round-trip included): probe.yaml and ci.yaml both parse OK. Temp source
-clones/probe programs were deleted afterwards.
+## Reference
 
-## Next steps
-
-1. Commit + push `probe.yaml`, dispatch probe from the web UI.
-2. Verify all three checks in the probe run:
-   - `node ok`
-   - `getent hosts git.stfx.eu` → `169.254.1.2`
-   - `pids.max=2048` (if `1` again → Plan A failed → Plan B / Plan C)
-3. Confirm the full ci.yaml run passes on push.
-4. Delete `.forgejo/workflows/probe.yaml` (temporary diagnostic workflow).
-5. **wcx** (<https://git.stfx.eu/sven/wcx>) has the same checkout problem and
-   needs the runner-config fix (or its own workflow fix) too.
-6. Optional: report the `|N` round-trip bug upstream
-   (<https://codeberg.org/go-yaml/yaml> / runner jobparser).
+- `.forgejo/workflows/ci.yaml` — the deliverable (green pending infra fix).
+- `.forgejo/workflows/probe.yaml` — temporary diagnostic workflow
+  (node check / hosts check / pids check / sleep 300); delete when done.
+- Runner/Forgejo source clones for debugging lived in
+  `$TMPDIR/opencode/{forgejo-src,runner-src,runner-12,runner-13}` —
+  throwaway, re-clone from code.forgejo.org / codeberg.org if needed
+  (plain `git clone --depth 1 --branch <tag>` works; Codeberg blocks HTTP
+  scraping but not git).
