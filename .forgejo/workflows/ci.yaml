@@ -12,7 +12,6 @@ jobs:
     runs-on: ubuntu-24.04
     container:
       image: docker.gitea.com/runner-images:ubuntu-24.04
-      options: --add-host=git.stfx.eu:169.254.1.2
     steps:
     - name: Check out git repository
       uses: actions/checkout@v4
