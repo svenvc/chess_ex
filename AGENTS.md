@@ -55,6 +55,14 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   `Chess.PGN.Game` struct (`headers`, `moves`, `result`, `comments`, `game`).
   Its `moves` are **chronological**, the other way around than `Chess.Game`.
   Games that start from a FEN are not supported yet.
+- `Chess.Narrator` — turns a game into readable text: `describe/1` returns it,
+  `print/1` writes it out. Every ply is the SAN token, the move in words
+  (with captures, promotions, castling and check), the board `Board.to_ascii/1`
+  renders and `Evaluation.evaluate/1`; a closing sentence says how the game
+  stopped. Accepts a `Chess.PGN.Game`, a `Chess.Game` (its newest-first
+  `moves` are played back in order, a game without moves is described as it
+  stands) or a plain chronological move list. A move that is not legal raises
+  `ArgumentError`.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
   `rules_test.exs` includes perft from the initial position

@@ -30,6 +30,9 @@ Ordered roughly by dependency.
 - [x] PGN reading/writing: `Chess.PGN` reads a document of games
   (`parse/2`, `parse_all/2`, `parse_file/2`) and writes a game back
   (`to_pgn/1`). Games that start from a FEN are not supported yet.
+- [x] Game description: `Chess.Narrator` writes a game out ply by ply — the
+  SAN token, the move in words, the board and the evaluated strength — and
+  ends with how the game stopped.
 - [ ] Unicode piece rendering — glyphs already documented in `doc/UNICODE.md`;
   `Board.to_ascii/1` only prints letters today.
 

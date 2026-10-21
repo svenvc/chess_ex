@@ -51,6 +51,55 @@ Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8#
 1-0
 ```
 
+A game described step by step. Every ply holds the move in algebraic notation,
+the move in words, the board it leads to and the strength of the position, and
+the text ends with how the game stopped:
+
+```elixir
+iex> pgn |> Chess.Narrator.describe() |> String.split("\n\n") |> Enum.take(3) |> Enum.join("\n\n") |> IO.puts()
+Paul Morphy (White) vs Duke Karl / Count Isouard (Black)
+
+Initial position
+r n b q k b n r
+p p p p p p p p
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+P P P P P P P P
+R N B Q K B N R
+Evaluation: +0.00 for White (material +0.00, positional +0.00)
+
+1. e4
+white pawn from e2 to e4, advances two squares
+r n b q k b n r
+p p p p p p p p
+. . . . . . . .
+. . . . . . . .
+. . . . P . . .
+. . . . . . . .
+P P P P . P P P
+R N B Q K B N R
+Evaluation: +0.00 for White (material +0.00, positional +0.00)
+```
+
+Captures, castling, promotions and checks are spelled out as they happen:
+
+```
+19. Nxb5
+white knight from c3 to b5, captures black pawn on b5
+
+23. O-O-O
+white king castles queen side from e1 to c1, rook from a1 to d1
+
+33. Rd8#
+white rook from d1 to d8, black is checkmated
+```
+
+`Chess.Narrator.print/1` writes the whole description out; the text ends with
+a sentence about how the game stopped, as in `black is checkmated. White wins
+(1-0).`
+
 ## references
 
 - https://en.wikipedia.org/wiki/Chess
