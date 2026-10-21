@@ -38,6 +38,11 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   `moves`); `Game.new/0` is the initial position. `moves` is newest-first.
   Castling rights and the en passant target live here because they **cannot**
   be derived from the board alone. Generation/applying go through `Chess.Rules`.
+- `Chess.Evaluation` — static score in centipawns, White-relative (positive =
+  White is better): `evaluate/1` (a game or a bare board), `evaluate/2` (score
+  from `:white`/`:black`), `breakdown/1` (map of terms: `:material`,
+  `:positional`). `evaluate/1` sums the breakdown, so new terms (mobility,
+  pawn structure, king safety) are added by adding a key and a function.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
   `rules_test.exs` includes perft from the initial position

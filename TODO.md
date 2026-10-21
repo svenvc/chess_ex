@@ -29,9 +29,13 @@ Ordered roughly by dependency.
 - [ ] Unicode piece rendering — glyphs already documented in `doc/UNICODE.md`;
   `Board.to_ascii/1` only prints letters today.
 
-## Engine (README scope, nothing implemented yet)
+## Engine (README scope)
 
-- [ ] Search + evaluation.
+- [x] Static evaluation: `Chess.Evaluation` scores a position in centipawns
+  (material + piece-square tables), always from White's point of view.
+  `breakdown/1` exposes the individual terms, so mobility, pawn structure and
+  king safety can be added later.
+- [ ] Search: depth-limited search on top of the evaluation.
 - [ ] UCI interface.
 
 ## Tests & docs
