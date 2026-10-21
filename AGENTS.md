@@ -43,10 +43,28 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   from `:white`/`:black`), `breakdown/1` (map of terms: `:material`,
   `:positional`). `evaluate/1` sums the breakdown, so new terms (mobility,
   pawn structure, king safety) are added by adding a key and a function.
+- `Chess.SAN` — algebraic notation. `parse/2` turns a token into a
+  `Chess.Move`, `to_san/2` turns a `Chess.Move` back into a token. Both
+  resolve against `Rules.legal_moves/1`, so a token always names exactly one
+  move; the `+`/`#` markers are checked against the engine (opt out with
+  `validate_marker: false`). Raises `Chess.SAN.ParseError`.
+- `Chess.PGN` — reading and writing PGN: `parse/2`, `parse_all/2`,
+  `parse_file/2`, `to_pgn/1`. The reader is forgiving about the shape of the
+  movetext (move numbers, comments, variations, NAGs) and strict about the
+  moves: a move that is not legal raises `Chess.PGN.ParseError`. A game is a
+  `Chess.PGN.Game` struct (`headers`, `moves`, `result`, `comments`, `game`).
+  Its `moves` are **chronological**, the other way around than `Chess.Game`.
+  Games that start from a FEN are not supported yet.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
   `rules_test.exs` includes perft from the initial position
-  (20 / 400 / 8902 / 197281), which is the main regression net for generation.
+  (20 / 400 / 8902 / 197281), which is the main regression net for generation,
+  and replays every game of `test/fixtures/` ply by ply, holding the state of
+  the game after every ply against a second derivation of the castling rights
+  and the en passant target.
+  `test/fixtures/` holds ten well known games in PGN plus one synthetic game
+  that covers the special moves the famous games lack; the files are read by
+  `pgn_test.exs`, the results of that suite stand in `test/fixtures/README.md`.
 
 ## Conventions that differ from defaults
 
@@ -58,6 +76,10 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   color. Piece color uses `Piece.is_black?/1` / `Piece.is_white?/1`.
 - `String.to_atom/1` on the 64 bounded squares is fine; be careful if reusing
   that pattern for arbitrary future PGN/FEN input.
+- Text that comes from a file is handled **byte by byte** (`IO.iodata_to_binary/1`,
+  `List.to_string/1` is *not* the same thing): a tag value like `Łódź` has to
+  survive the round trip. `Enum.join/1` on a list of char codes turns them
+  into decimal numbers.
 
 ## Docs
 

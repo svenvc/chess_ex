@@ -21,11 +21,15 @@ Ordered roughly by dependency.
 - [x] Board representation: canonical form is now a `%{position => piece}` map;
   `at/2` also accepts keyword lists at the API boundary.
 
-## Notations (README scope, nothing implemented yet)
+## Notations
 
 - [ ] FEN parsing/serialization (references in README).
-- [ ] Algebraic (SAN) and long algebraic notation.
-- [ ] PGN reading/writing.
+- [x] Algebraic notation: `Chess.SAN` reads a SAN token and writes one,
+  resolved against the legal moves of the position. Long algebraic notation is
+  still open.
+- [x] PGN reading/writing: `Chess.PGN` reads a document of games
+  (`parse/2`, `parse_all/2`, `parse_file/2`) and writes a game back
+  (`to_pgn/1`). Games that start from a FEN are not supported yet.
 - [ ] Unicode piece rendering — glyphs already documented in `doc/UNICODE.md`;
   `Board.to_ascii/1` only prints letters today.
 
@@ -42,17 +46,24 @@ Ordered roughly by dependency.
 
 - [x] Tests for all modules, including perft from the initial position
   (`test/chess_test.exs` is still a dummy leftover from `mix new`).
+- [x] PGN regression suite: ten well known games and one synthetic game in
+  `test/fixtures/`, read and written back by the tests; the results stand in
+  `test/fixtures/README.md`.
+- [x] Corpus replay: every game of `test/fixtures/` is played again ply by ply
+  in `rules_test.exs`, and the state of the game after every ply is held
+  against a second derivation of the castling rights and the en passant
+  target.
 - [x] Fill in `doc/RULES.md` — core moves done; draws section still open
   (see its TODO).
-- [ ] README: usage examples (`iex -S mix`, `Board.print/1`) — no runnable
-  example exists yet.
+- [x] README: usage examples (`iex -S mix`, `Board.print/1`, reading a PGN).
 - [ ] Consider adding Credo/Dialyzer and CI; today `mix format` is the only
   quality gate.
 
 ## Performance notes
 
-- Perft depth 4 dominates the test suite: ~1.0s (92% of total), ~5.1 µs/node.
-  Depth 3 takes ~40ms (~4.4 µs/node).
+- Perft depth 4 dominates the test suite: ~1.2s of ~1.9s total (~60%),
+  ~5.9 µs/node. Depth 3 takes ~50ms (~4.4 µs/node).
+- The corpus replay plays 580 plies of the eleven games and costs ~0.1s.
 - `Rules.legal_moves/1` from the initial position takes ~98 µs: ~15 µs of
   generation and ~50 µs of check filtering (~20 × `in_check?`, ~2.45 µs each).
   `Rules.apply/2` is only ~0.47 µs, so avoiding the `Game` struct would save

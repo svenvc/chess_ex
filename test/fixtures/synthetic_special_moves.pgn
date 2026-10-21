@@ -1,0 +1,12 @@
+[Event "Synthetic Special Moves"]
+[Site "-"]
+[Date "2026.10.21"]
+[Round "-"]
+[White "Engine"]
+[Black "Engine"]
+[Result "1-0"]
+
+1. e4 Na6 2. e5 d5 3. exd6 { en passant capture } Nf6 4. Nf3 h6 5. Ne5 h5 6. Nc6
+bxc6 7. Qe2 g6 8. Nc3 Bg7 9. d4 h4 10. Be3 h3 11. b4 g5 12. b5 e6 13. b6
+Nb4 14. b7 Bh6 15. bxa8=Q { promotion, the rook on its home corner falls } O-O
+16. O-O-O 1-0
