@@ -49,7 +49,7 @@ defmodule Chess.Narrator do
   have been played.
   """
   def describe_last_move(%Game{moves: []} = game) do
-    position_step(game, "Position") <> "\n" <> describe_status(game)
+    position_step(game, "New game, initial position") <> "\n" <> describe_status(game)
   end
 
   def describe_last_move(%Game{} = game) do
