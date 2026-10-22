@@ -32,6 +32,9 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   `en_passant/2`, `promotion/3`.
 - `Chess.Rules` — `attacked?/3`, `in_check?/1,2`, `pseudo_legal_moves/1`,
   `legal_moves/1`, `legal_move?/2`, `apply/2`, `checkmate?/1`, `stalemate?/1`.
+  The draw rules live here too: `insufficient_material?/1`,
+  `fifty_move_rule?/1`, `seventy_five_move_rule?/1`, `repetition_count/1`,
+  `threefold_repetition?/1`, `fivefold_repetition?/1`.
   It defines `apply/2`, shadowing `Kernel.apply/2` via
   `import Kernel, except: [apply: 2]` — don't remove that line.
 - `Chess.Game` — struct (`board`, `side_to_move`, `castling`, `en_passant`,
@@ -41,6 +44,9 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   that the moves of a game can be played back from there. Castling rights, the
   en passant target and the two counters live here because they **cannot**
   be derived from the board alone. Generation/applying go through `Chess.Rules`.
+  `Game.status/1` names how the game stands (`:ongoing`, `:checkmate`,
+  `:stalemate` or one of the draws), `Game.over?/1` and `Game.winner/1` answer
+  the two questions that follow from it.
 - `Chess.Evaluation` — static score in centipawns, White-relative (positive =
   White is better): `evaluate/1` (a game or a bare board), `evaluate/2` (score
   from `:white`/`:black`), `breakdown/1` (map of terms: `:material`,
@@ -68,10 +74,10 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   `print/1` writes it out. Every ply is the SAN token, the move in words
   (with captures, promotions, castling and check), the board `Board.to_ascii/1`
   renders and `Evaluation.evaluate/1`; a closing sentence says how the game
-  stopped. Accepts a `Chess.PGN.Game`, a `Chess.Game` (its newest-first
-  `moves` are played back in order, a game without moves is described as it
-  stands) or a plain chronological move list. A move that is not legal raises
-  `ArgumentError`.
+  stopped, taken from `Game.status/1`. Accepts a `Chess.PGN.Game`, a
+  `Chess.Game` (its newest-first `moves` are played back in order, a game
+  without moves is described as it stands) or a plain chronological move list.
+  A move that is not legal raises `ArgumentError`.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
   `rules_test.exs` includes perft from the initial position
@@ -94,6 +100,14 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   color. Piece color uses `Piece.is_black?/1` / `Piece.is_white?/1`.
 - `String.to_atom/1` on the 64 bounded squares is fine; be careful if reusing
   that pattern for arbitrary future PGN/FEN input.
+- A **position** of a game (the thing the repetition rules count) is the board,
+  the side to move, the castling rights and the en passant target; the
+  halfmove clock and the number of the move are not part of it. The en passant
+  target only counts when the side to move can really take a pawn with it.
+- The repetition rules work the moves of a game again instead of keeping a
+  history of positions around; `Rules.apply/2` stays free of them, so perft
+  is not slowed down by them. A game that does not start from the initial
+  position has to know where its moves begin: that is what `Game.start` is for.
 - Text that comes from a file is handled **byte by byte** (`IO.iodata_to_binary/1`,
   `List.to_string/1` is *not* the same thing): a tag value like `Łódź` has to
   survive the round trip. `Enum.join/1` on a list of char codes turns them
@@ -101,9 +115,9 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
 
 ## Docs
 
-- `doc/RULES.md` is the compact rule set to implement against (draws still
-  marked TODO); `doc/UNICODE.md` lists the 12 piece glyphs. A board SVG lives
-  in `doc/`.
+- `doc/RULES.md` is the compact rule set to implement against (moves and draws
+  are both in there now); `doc/UNICODE.md` lists the 12 piece glyphs. A board
+  SVG lives in `doc/`.
 - README's Wikipedia links (FEN, PGN, algebraic notation, UCI) are the
   roadmap for the notations of the library; FEN, PGN and algebraic notation are
   implemented, UCI is not.

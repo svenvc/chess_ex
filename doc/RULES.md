@@ -62,8 +62,25 @@ Based on the [Chess](https://en.wikipedia.org/wiki/Chess) article on Wikipedia.
 
 ## Draws
 
-TODO: threefold repetition, fifty-move rule, insufficient material —
-deferred to a later pass.
+- **Threefold repetition**: the same position arises for the third time. A
+  position is the same when the pieces of the same kind stand on the same
+  squares, the same side is to move, the castling rights are the same and the
+  possible moves are the same. An en passant target that cannot be taken
+  makes no difference: it only counts when the side to move can really take
+  the pawn with it.
+- **Fivefold repetition**: the same position arises for the fifth time.
+- **Fifty-move rule**: 50 moves of each player without a capture and without
+  a pawn move.
+- **Seventy-five-move rule**: 75 moves of each player without a capture and
+  without a pawn move.
+- **Insufficient material**: neither side has the material to mate the other:
+  a king against a king, a king and a single minor piece against a king, or a
+  king and a bishop against a king and a bishop on squares of the same color.
+
+The rules of the FIDE make the threefold repetition and the fifty-move rule
+claimable: the player who wants the draw has to claim it. This library treats
+them as draws that end the game, like the fivefold repetition and the
+seventy-five-move rule, which the FIDE ends by themselves.
 
 ## See also
 

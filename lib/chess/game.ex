@@ -19,10 +19,12 @@ defmodule Chess.Game do
   `start` is the position the game started from. It is `nil` for a game that
   starts from the initial position; `Chess.FEN.parse/1` sets it to the
   position it read, so that the moves of the game can be played back from
-  there.
+  there. The moves of a game are played back from `start` when the draw
+  rules ask for the positions the game went through, so a game that does not
+  start from the initial position has to know where its moves begin.
   """
 
-  alias Chess.Board
+  alias Chess.{Board, Rules}
 
   defstruct board: nil,
             side_to_move: :white,
@@ -40,6 +42,16 @@ defmodule Chess.Game do
                      {:black, :queen_side}
                    ])
 
+  @type status ::
+          :ongoing
+          | :checkmate
+          | :stalemate
+          | :draw_fivefold_repetition
+          | :draw_repetition
+          | :draw_seventy_five_moves
+          | :draw_fifty_moves
+          | :draw_insufficient_material
+
   @doc """
   Create and return a new game in the initial position (White to move,
   all castling rights, no en passant target).
@@ -53,4 +65,56 @@ defmodule Chess.Game do
       moves: []
     }
   end
+
+  @doc """
+  Return how the game stands.
+
+  The game is `:ongoing` as long as it can be played on. It is `:checkmate`
+  when the side to move is mated and `:stalemate` when the side to move has
+  no move and is not in check. The draws are the rules that end a game
+  without a winner:
+
+    * `:draw_fivefold_repetition` - the position has occurred five times
+    * `:draw_repetition` - the position has occurred three times
+    * `:draw_seventy_five_moves` - 75 moves without a capture or a pawn move
+    * `:draw_fifty_moves` - 50 moves without a capture or a pawn move
+    * `:draw_insufficient_material` - neither side has the material to mate
+
+  The rules of the FIDE make the threefold repetition and the fifty move rule
+  claimable: the player who wants the draw has to claim it. Here they end
+  the game like the other two.
+  """
+  def status(game) do
+    cond do
+      Rules.checkmate?(game) -> :checkmate
+      Rules.stalemate?(game) -> :stalemate
+      Rules.fivefold_repetition?(game) -> :draw_fivefold_repetition
+      Rules.threefold_repetition?(game) -> :draw_repetition
+      Rules.seventy_five_move_rule?(game) -> :draw_seventy_five_moves
+      Rules.fifty_move_rule?(game) -> :draw_fifty_moves
+      Rules.insufficient_material?(game) -> :draw_insufficient_material
+      true -> :ongoing
+    end
+  end
+
+  @doc """
+  Return true if the game is over.
+  """
+  def over?(game), do: status(game) != :ongoing
+
+  @doc """
+  Return the side that won the game, or nil if nobody won it.
+
+  Only a checkmate has a winner: a game that is drawn has none.
+  """
+  def winner(game) do
+    case status(game) do
+      :checkmate -> opponent(game.side_to_move)
+      _other -> nil
+    end
+  end
+
+  # The other color.
+  defp opponent(:white), do: :black
+  defp opponent(:black), do: :white
 end

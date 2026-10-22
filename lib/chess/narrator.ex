@@ -135,21 +135,24 @@ defmodule Chess.Narrator do
 
   # The last sentence: how the game stopped.
   defp ending_step(game, result) do
-    checkmate? = Rules.checkmate?(game)
+    status = Game.status(game)
 
     check =
-      if not checkmate? and Rules.in_check?(game) do
+      if status != :checkmate and Rules.in_check?(game) do
         "#{game.side_to_move} is in check. "
       else
         ""
       end
 
     cond do
-      checkmate? ->
+      status == :checkmate ->
         "#{game.side_to_move} is checkmated. #{String.capitalize(opponent(game.side_to_move))} wins#{result_suffix(result)}."
 
-      Rules.stalemate?(game) ->
+      status == :stalemate ->
         "#{game.side_to_move} is stalemated. The game is drawn#{result_suffix(result)}."
+
+      status != :ongoing ->
+        "#{draw_reason(status)}#{result_suffix(result)}."
 
       result == "1-0" ->
         check <> "White wins#{result_suffix(result)}."
@@ -164,6 +167,22 @@ defmodule Chess.Narrator do
         check <> "The moves run out; the game is not over."
     end
   end
+
+  # Why the game was drawn. The sentence is finished by the caller.
+  defp draw_reason(:draw_fivefold_repetition),
+    do: "The game is drawn by fivefold repetition"
+
+  defp draw_reason(:draw_repetition),
+    do: "The game is drawn by threefold repetition"
+
+  defp draw_reason(:draw_seventy_five_moves),
+    do: "The game is drawn by the seventy-five-move rule"
+
+  defp draw_reason(:draw_fifty_moves),
+    do: "The game is drawn by the fifty-move rule"
+
+  defp draw_reason(:draw_insufficient_material),
+    do: "The game is drawn: neither side has the material to mate"
 
   ## The move in words
 

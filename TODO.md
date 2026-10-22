@@ -14,8 +14,11 @@ Ordered roughly by dependency.
 - [x] `Chess.Game` state struct: board, side to move, castling rights,
   en passant target, move history, the two counters of a FEN record and the
   position the game started from.
-- [ ] `Chess.Game` orchestration: draw conditions (threefold repetition,
+- [x] `Chess.Game` orchestration: draw conditions (threefold repetition,
   fifty-move rule, insufficient material) and game status/winner.
+  `Game.status/1` names the strongest rule that applies, `Game.over?/1` and
+  `Game.winner/1` answer the two questions that follow from it. The fivefold
+  repetition and the seventy-five-move rule are in there as well.
 - [x] Board lookup: `Board.at/2` added (returns `nil` for empty squares,
   raises on invalid positions); `to_ascii/1` now uses it.
 - [x] Board primitives: `pieces/2`, `king/2`, `put/3`, `remove/2`, `move/3`.
@@ -59,8 +62,7 @@ Ordered roughly by dependency.
   in `rules_test.exs`, and the state of the game after every ply is held
   against a second derivation of the castling rights, the en passant target
   and the two counters of a FEN record.
-- [x] Fill in `doc/RULES.md` — core moves done; draws section still open
-  (see its TODO).
+- [x] Fill in `doc/RULES.md` — core moves and draws done.
 - [x] README: usage examples (`iex -S mix`, `Board.print/1`, reading a PGN).
 - [ ] Consider adding Credo/Dialyzer and CI; today `mix format` is the only
   quality gate.
@@ -74,6 +76,11 @@ Ordered roughly by dependency.
   generation and ~50 µs of check filtering (~20 × `in_check?`, ~2.45 µs each).
   `Rules.apply/2` is only ~0.47 µs, so avoiding the `Game` struct would save
   little.
+- The draw rules are not on the path of `Rules.apply/2`, so perft is unaffected.
+  `Game.status/1` costs one move generation (~120 µs) plus the replay of the
+  game for the repetition rules: `Rules.repetition_count/1` works the moves
+  again and takes ~0.5 µs per ply (33 plies ≈ 16 µs). A game that has to know
+  whether it repeats therefore keeps its whole history around.
 - Conclusion: don't optimize the engine yet; readability matters more. Real wins
   need precomputed neighbour/ray tables, board-only legality, king tracking or
   bitboards — engine-level design work that should wait for an actual search

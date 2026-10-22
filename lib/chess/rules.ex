@@ -4,6 +4,10 @@ defmodule Chess.Rules do
 
   Castling rights, the en passant target and the side to move live in the game
   state, because they cannot be derived from the board alone.
+
+  The rules that end a game in a draw live here as well: the repetition rules,
+  the fifty-move and the seventy-five-move rule and the rule about material
+  that is not enough to mate.
   """
 
   alias Chess.{Board, Game, Move, Piece, Position}
@@ -11,6 +15,7 @@ defmodule Chess.Rules do
   import Kernel, except: [apply: 2]
 
   @positions Position.all()
+
   @colors [:white, :black]
 
   @knight_deltas [{1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, -2}, {-2, -1}, {-2, 1}, {-1, 2}]
@@ -20,6 +25,12 @@ defmodule Chess.Rules do
   @rook_deltas [{1, 0}, {-1, 0}, {0, 1}, {0, -1}]
 
   @bishop_deltas [{1, 1}, {1, -1}, {-1, 1}, {-1, -1}]
+
+  # The number of plies the halfmove clock has to reach for the fifty move
+  # rule and for the seventy five move rule.
+  @fifty_moves 100
+
+  @seventy_five_moves 150
 
   ## Queries
 
@@ -90,6 +101,86 @@ defmodule Chess.Rules do
   Return true if the side to move is stalemated.
   """
   def stalemate?(game), do: not in_check?(game) and legal_moves(game) == []
+
+  ## Draws
+
+  @doc """
+  Return true if neither side has the material to checkmate the other.
+
+  A king against a king, a king and a single minor piece against a king, or
+  a king and a bishop against a king and a bishop on squares of the same
+  color: in all of these the game cannot end in mate.
+  """
+  def insufficient_material?(game) do
+    board = game.board
+    white = minors(board, :white)
+    black = minors(board, :black)
+
+    cond do
+      heavy_material?(board) ->
+        false
+
+      white == [] and black == [] ->
+        true
+
+      white == [] and length(black) == 1 ->
+        true
+
+      black == [] and length(white) == 1 ->
+        true
+
+      length(white) == 1 and length(black) == 1 ->
+        both_bishops?(white, black) and same_colour?(white, black)
+
+      true ->
+        false
+    end
+  end
+
+  @doc """
+  Return true if the fifty move rule applies: 50 moves of each player without
+  a capture and without a pawn move.
+  """
+  def fifty_move_rule?(game), do: game.halfmove_clock >= @fifty_moves
+
+  @doc """
+  Return true if the seventy five move rule applies: 75 moves of each player
+  without a capture and without a pawn move.
+  """
+  def seventy_five_move_rule?(game), do: game.halfmove_clock >= @seventy_five_moves
+
+  @doc """
+  Return how often the current position of the game has occurred.
+
+  A position is the board, the side to move, the castling rights and the en
+  passant target; the halfmove clock and the number of the move are not part
+  of it. The en passant target only makes a difference when the side to move
+  can actually take a pawn en passant.
+
+  The positions of the game are worked out by playing its moves again, from
+  the position the game started at.
+  """
+  def repetition_count(game) do
+    keys =
+      game.start
+      |> start_position()
+      |> states(Enum.reverse(game.moves))
+      |> Enum.map(&position_key/1)
+
+    current = List.last(keys)
+
+    Enum.count(keys, &(&1 == current))
+  end
+
+  @doc """
+  Return true if the current position has occurred three times.
+  """
+  def threefold_repetition?(game), do: repetition_count(game) >= 3
+
+  @doc """
+  Return true if the current position has occurred five times.
+  """
+  def fivefold_repetition?(game), do: repetition_count(game) >= 5
 
   ## Move application
 
@@ -454,6 +545,94 @@ defmodule Chess.Rules do
   end
 
   defp captured_piece(board, {:promotion, _from, to, _piece}), do: Board.at(board, to)
+
+  ## Draws
+
+  # The pieces that are enough to mate on their own.
+  defp heavy_material?(board) do
+    Enum.any?(board, fn {_position, piece} ->
+      Piece.is_pawn?(piece) or Piece.is_rook?(piece) or Piece.is_queen?(piece)
+    end)
+  end
+
+  # The bishops and knights of a color: the pieces that are not enough on
+  # their own.
+  defp minors(board, color) do
+    board
+    |> Board.pieces(color)
+    |> Enum.filter(fn {_position, piece} ->
+      Piece.is_bishop?(piece) or Piece.is_knight?(piece)
+    end)
+  end
+
+  # Both sides hold a single bishop.
+  defp both_bishops?([{_first, first_piece}], [{_second, second_piece}]) do
+    Piece.is_bishop?(first_piece) and Piece.is_bishop?(second_piece)
+  end
+
+  # The two bishops stand on squares of the same color.
+  defp same_colour?([{first_position, _first_piece}], [{second_position, _second_piece}]) do
+    Position.is_black?(first_position) == Position.is_black?(second_position)
+  end
+
+  # The position a game started at: the one the game knows, or the initial
+  # position.
+  defp start_position(nil), do: Game.new()
+  defp start_position(start), do: start
+
+  # The states of a game, the first one first. A move that cannot be played
+  # ends the history: a game that was put together by hand has no history to
+  # speak of.
+  defp states(state, []) do
+    [state]
+  end
+
+  defp states(state, [move | rest]) do
+    if playable?(state, move) do
+      next = apply(state, move)
+      [state | states(next, rest)]
+    else
+      [state]
+    end
+  end
+
+  # The piece that is to move stands on the square the move comes from.
+  defp playable?(state, move) do
+    Board.at(state.board, move_from(move)) != nil
+  end
+
+  # The key of a position: the board, the side to move, the castling rights
+  # and the en passant target.
+  defp position_key(game) do
+    {game.board, game.side_to_move, game.castling, en_passant_key(game)}
+  end
+
+  # The en passant target is part of the position only when the side to move
+  # can take a pawn with it.
+  defp en_passant_key(game) do
+    if en_passant_capture_available?(game), do: game.en_passant, else: nil
+  end
+
+  # A pawn of the side to move stands beside the en passant target, on the
+  # rank the pawn would come from.
+  defp en_passant_capture_available?(game) do
+    case game.en_passant do
+      nil ->
+        false
+
+      target ->
+        rank = Position.rank(target) - pawn_direction(game.side_to_move)
+        file_index = Position.file_index(target)
+
+        [file_index - 1, file_index + 1]
+        |> Enum.any?(fn index ->
+          case position_at(index, rank) do
+            nil -> false
+            position -> pawn_of?(Board.at(game.board, position), game.side_to_move)
+          end
+        end)
+    end
+  end
 
   ## Castling rights
 

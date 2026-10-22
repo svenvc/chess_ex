@@ -130,6 +130,23 @@ white rook from d1 to d8, black is checkmated
 a sentence about how the game stopped, as in `black is checkmated. White wins
 (1-0).`
 
+How a game stands, and who won it:
+
+```elixir
+iex> game = Chess.PGN.parse_file("test/fixtures/The_Opera_game.pgn").game
+iex> Chess.Game.status(game)
+:checkmate
+iex> Chess.Game.winner(game)
+:white
+iex> Chess.Game.over?(game)
+true
+```
+
+A game that is still running is `:ongoing`; a drawn game is one of
+`:draw_repetition`, `:draw_fivefold_repetition`, `:draw_fifty_moves`,
+`:draw_seventy_five_moves` or `:draw_insufficient_material`, and a drawn game
+has no winner.
+
 ## references
 
 - https://en.wikipedia.org/wiki/Chess

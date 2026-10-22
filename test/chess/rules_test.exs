@@ -300,6 +300,105 @@ defmodule Chess.RulesTest do
     end
   end
 
+  describe "draws" do
+    test "a king against a king has not enough material" do
+      assert Rules.insufficient_material?(game(%{e1: :K, e8: :k}))
+    end
+
+    test "a king and a minor piece against a king has not enough material" do
+      assert Rules.insufficient_material?(game(%{e1: :K, e8: :k, b1: :N}))
+      assert Rules.insufficient_material?(game(%{e1: :K, e8: :k, c1: :B}))
+    end
+
+    test "two bishops on squares of the same color have not enough material" do
+      assert Rules.insufficient_material?(game(%{e1: :K, e8: :k, c1: :B, d8: :b}))
+    end
+
+    test "two bishops on squares of different colors have enough material" do
+      refute Rules.insufficient_material?(game(%{e1: :K, e8: :k, c1: :B, f7: :b}))
+    end
+
+    test "two knights can mate" do
+      refute Rules.insufficient_material?(game(%{e1: :K, e8: :k, b1: :N, b8: :n}))
+    end
+
+    test "two knights and a king can mate" do
+      refute Rules.insufficient_material?(game(%{e1: :K, e8: :k, b1: :N, c2: :N}))
+    end
+
+    test "a pawn, a rook or a queen is enough material" do
+      refute Rules.insufficient_material?(game(%{e1: :K, e8: :k, e2: :P}))
+      refute Rules.insufficient_material?(game(%{e1: :K, e8: :k, a1: :R}))
+      refute Rules.insufficient_material?(game(%{e1: :K, e8: :k, d1: :Q}))
+    end
+
+    test "the fifty move rule needs a hundred plies without a capture" do
+      refute Rules.fifty_move_rule?(%{Game.new() | halfmove_clock: 99})
+      assert Rules.fifty_move_rule?(%{Game.new() | halfmove_clock: 100})
+    end
+
+    test "the seventy five move rule needs a hundred and fifty plies" do
+      refute Rules.seventy_five_move_rule?(%{Game.new() | halfmove_clock: 149})
+      assert Rules.seventy_five_move_rule?(%{Game.new() | halfmove_clock: 150})
+    end
+
+    test "a capture starts the halfmove clock over" do
+      game = %Game{
+        board: %{e1: :K, e8: :k, d5: :P, e6: :p},
+        side_to_move: :white,
+        halfmove_clock: 42
+      }
+
+      assert Rules.apply(game, Move.new(:d5, :e6)).halfmove_clock == 0
+    end
+
+    test "the position of the start occurs three times in a knight shuffle" do
+      game = play(shuffle())
+
+      assert Rules.repetition_count(game) == 3
+      assert Rules.threefold_repetition?(game)
+      refute Rules.fivefold_repetition?(game)
+    end
+
+    test "the position of the start occurs twice after four plies" do
+      game = play(Enum.take(shuffle(), 4))
+
+      assert Rules.repetition_count(game) == 2
+      refute Rules.threefold_repetition?(game)
+    end
+
+    test "the castling rights are part of the position" do
+      knights = play(Enum.take(shuffle(), 4))
+      kings = play([{:e1, :e2}, {:e8, :e7}, {:e2, :e1}, {:e7, :e8}])
+
+      assert Rules.repetition_count(knights) == 2
+      assert Rules.repetition_count(kings) == 1
+    end
+
+    test "an en passant target that cannot be taken is not part of the position" do
+      game = play([{:d2, :d4}, {:g8, :f6}, {:g1, :f3}, {:f6, :g8}, {:f3, :g1}])
+
+      assert Rules.repetition_count(game) == 2
+    end
+
+    test "an en passant target that can be taken is part of the position" do
+      game =
+        play([
+          {:g1, :f3},
+          {:e7, :e5},
+          {:f3, :g1},
+          {:e5, :e4},
+          {:d2, :d4},
+          {:g8, :f6},
+          {:g1, :f3},
+          {:f6, :g8},
+          {:f3, :g1}
+        ])
+
+      assert Rules.repetition_count(game) == 1
+    end
+  end
+
   # Perft ("performance test") counts the leaf nodes reachable in a given
   # number of plies by recursively enumerating legal moves. Comparing the counts
   # against the known values for the initial position is the standard way to
@@ -344,6 +443,25 @@ defmodule Chess.RulesTest do
     |> Rules.legal_moves()
     |> Enum.map(fn move -> perft(Rules.apply(game, move), depth - 1) end)
     |> Enum.sum()
+  end
+
+  # Play the moves of a game, from the initial position.
+  defp play(moves) do
+    Enum.reduce(moves, Game.new(), fn move, game -> Rules.apply(game, move) end)
+  end
+
+  # The moves that let the knights go out and back again.
+  defp shuffle do
+    [
+      {:g1, :f3},
+      {:g8, :f6},
+      {:f3, :g1},
+      {:f6, :g8},
+      {:g1, :f3},
+      {:g8, :f6},
+      {:f3, :g1},
+      {:f6, :g8}
+    ]
   end
 
   # Play the moves of a game and check the state of the game after every ply.

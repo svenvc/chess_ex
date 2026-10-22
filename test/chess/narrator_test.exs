@@ -200,6 +200,29 @@ defmodule Chess.NarratorTest do
       assert Narrator.describe(game)
              |> String.ends_with?("black is stalemated. The game is drawn.")
     end
+
+    test "says the game is drawn by threefold repetition" do
+      input = [
+        {:g1, :f3},
+        {:g8, :f6},
+        {:f3, :g1},
+        {:f6, :g8},
+        {:g1, :f3},
+        {:g8, :f6},
+        {:f3, :g1},
+        {:f6, :g8}
+      ]
+
+      assert Narrator.describe(input)
+             |> String.ends_with?("The game is drawn by threefold repetition.")
+    end
+
+    test "says the game is drawn because there is not enough material" do
+      game = %Game{board: %{e1: :K, e8: :k}, side_to_move: :white}
+
+      assert Narrator.describe(game)
+             |> String.ends_with?("The game is drawn: neither side has the material to mate.")
+    end
   end
 
   describe "the game it describes" do
