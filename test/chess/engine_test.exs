@@ -95,7 +95,7 @@ defmodule Chess.EngineTest do
 
       assert {:ok, move} = Engine.best_move(game)
       # Queen captures queen on d5
-      assert move == {:d1, :d5} or move == {:d1, :d5}
+      assert move == {:d1, :d5}
     end
 
     test "works from black's perspective" do
