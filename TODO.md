@@ -48,6 +48,8 @@ Ordered roughly by dependency.
   (material + piece-square tables), always from White's point of view.
   `breakdown/1` exposes the individual terms, so mobility, pawn structure and
   king safety can be added later.
+- [x] Basic engine: `Chess.Engine` selects moves with random or 1-ply
+  evaluation-based strategies and plays them via `play/2`.
 - [ ] Search: depth-limited search on top of the evaluation.
 - [ ] UCI interface.
 

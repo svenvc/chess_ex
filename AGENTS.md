@@ -47,6 +47,11 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   `Game.status/1` names how the game stands (`:ongoing`, `:checkmate`,
   `:stalemate` or one of the draws), `Game.over?/1` and `Game.winner/1` answer
   the two questions that follow from it.
+- `Chess.Engine` — move selection/play: `play/2` applies a chosen move and
+  returns `{:ok, game, move}` or `{:error, status}` when terminal; strategies
+  `:best` (1-ply via `Evaluation.evaluate/1`, random among ties by default) and
+  `:random` (uniform from `Rules.legal_moves/1`). `random_move/1`,
+  `best_move/1,2` return `{:ok, move}` or `{:error, status}`.
 - `Chess.Evaluation` — static score in centipawns, White-relative (positive =
   White is better): `evaluate/1` (a game or a bare board), `evaluate/2` (score
   from `:white`/`:black`), `breakdown/1` (map of terms: `:material`,

@@ -147,6 +147,25 @@ A game that is still running is `:ongoing`; a drawn game is one of
 `:draw_seventy_five_moves` or `:draw_insufficient_material`, and a drawn game
 has no winner.
 
+Playing a game automatically with the engine:
+
+```elixir
+iex> game = Chess.Game.new()
+iex> {:ok, game, move} = Chess.Engine.play(game)
+iex> move
+{:e2, :e4}
+iex> {:ok, game, _move} = Chess.Engine.play(game, strategy: :random)
+iex> game.side_to_move
+:white
+iex> Chess.Engine.best_move(game)
+{:ok, {:d7, :d5}}
+```
+
+`Chess.Engine.play/2` applies the move and returns `{:ok, game, move}`. It uses
+1-ply evaluation by default (`:best` strategy) and can also pick a
+`:random` move. When the game is over, it returns `{:error, reason}` with the
+game status.
+
 ## references
 
 - https://en.wikipedia.org/wiki/Chess
