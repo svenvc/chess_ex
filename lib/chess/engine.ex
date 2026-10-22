@@ -65,7 +65,7 @@ defmodule Chess.Engine do
     end
   end
 
-  defp select_move(game, moves, :random, _opts) do
+  defp select_move(_game, moves, :random, _opts) do
     Enum.random(moves)
   end
 
