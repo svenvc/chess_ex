@@ -44,6 +44,46 @@ defmodule Chess.Narrator do
   """
   def print(input), do: IO.puts(describe(input))
 
+  @doc """
+  Describe only the last move of a game, or the initial position if no moves
+  have been played.
+  """
+  def describe_last_move(%Game{moves: []} = game) do
+    position_step(game, "Position") <> "\n" <> describe_status(game)
+  end
+
+  def describe_last_move(%Game{} = game) do
+    [last | earlier] = game.moves
+    start = game.start || Game.new()
+    before = replay_moves(Enum.reverse(earlier), start)
+
+    unless Rules.legal_move?(before, last) do
+      raise ArgumentError, "move #{length(game.moves)} is not legal in this position"
+    end
+
+    next = Rules.apply(before, last)
+    ply = length(game.moves)
+    move_step(last, ply, before, next) <> "\n" <> describe_status(next)
+  end
+
+  @doc """
+  Print the last move of a game.
+  """
+  def print_last_move(game), do: IO.puts(describe_last_move(game))
+
+  @doc """
+  Describe the status of the game.
+  """
+  def describe_status(game) do
+    status = Game.status(game)
+
+    if status == :ongoing do
+      "#{String.capitalize(to_string(game.side_to_move))} to move."
+    else
+      ending_step(game, nil)
+    end
+  end
+
   ## The parts of the game
 
   # A PGN game holds its moves in the order they were played and knows the
@@ -99,6 +139,16 @@ defmodule Chess.Narrator do
       end)
 
     {Enum.reverse(steps), final}
+  end
+
+  defp replay_moves([], state), do: state
+
+  defp replay_moves([move | rest], state) do
+    unless Rules.legal_move?(state, move) do
+      raise ArgumentError, "move is not legal in this position"
+    end
+
+    replay_moves(rest, Rules.apply(state, move))
   end
 
   ## The steps

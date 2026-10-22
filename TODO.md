@@ -38,7 +38,11 @@ Ordered roughly by dependency.
   tag pairs `SetUp` and `FEN`.
 - [x] Game description: `Chess.Narrator` writes a game out ply by ply — the
   SAN token, the move in words, the board and the evaluated strength — and
-  ends with how the game stopped.
+  ends with how the game stopped. `describe_last_move/1`, `print_last_move/1`,
+  `describe_status/1` added for REPL use.
+- [x] REPL helpers: `Chess.Repl` with `new/0`, `move/1`, `move/2` returning
+  `{:ok, game}`/`{:error, reason}` and printing narrator-style steps; compact
+  game inspection via `:chess_repl_compact` flag with `Chess.Repl.clear/0`.
 - [ ] Unicode piece rendering — glyphs already documented in `doc/UNICODE.md`;
   `Board.to_ascii/1` only prints letters today.
 

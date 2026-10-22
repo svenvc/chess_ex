@@ -4,6 +4,31 @@ ChessEx is an Elixir project implementing tools related to Chess, including an e
 
 ## usage
 
+Play interactively in IEx with `Chess.Repl`:
+
+```elixir
+iex> {:ok, game} = Chess.Repl.new()
+r n b q k b n r
+...
+White to move.
+{:ok, #Chess.Game<>}
+
+iex> {:ok, game} = Chess.Repl.move(game, "e4")
+1. e4
+...
+Black to move.
+{:ok, #Chess.Game<>}
+
+iex> {:ok, game} = Chess.Repl.move(game)  # engine move
+2. ...
+...
+White to move.
+{:ok, #Chess.Game<>}
+
+iex> Chess.Repl.clear()  # restore full game inspection
+:ok
+```
+
 The board of the starting position:
 
 ```elixir

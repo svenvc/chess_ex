@@ -82,7 +82,12 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   stopped, taken from `Game.status/1`. Accepts a `Chess.PGN.Game`, a
   `Chess.Game` (its newest-first `moves` are played back in order, a game
   without moves is described as it stands) or a plain chronological move list.
-  A move that is not legal raises `ArgumentError`.
+  A move that is not legal raises `ArgumentError`. `describe_last_move/1`,
+  `print_last_move/1`, `describe_status/1` print/describe just the latest step.
+- `Chess.Repl` — IEx helpers: `new/0`, `move/1` (engine), `move/2` (SAN).
+  Returns `{:ok, game}` or `{:error, reason}`, prints narrator-style steps.
+  Sets process dictionary flag `:chess_repl_compact` so `Chess.Game` inspects
+  compactly; clear with `Chess.Repl.clear/0`.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
   `rules_test.exs` includes perft from the initial position

@@ -118,3 +118,16 @@ defmodule Chess.Game do
   defp opponent(:white), do: :black
   defp opponent(:black), do: :white
 end
+
+# Inspect implementation for Chess.Game. When the process dictionary
+# flag :chess_repl_compact is set (by Chess.Repl), games print compactly
+# to avoid cluttering the REPL.
+defimpl Inspect, for: Chess.Game do
+  def inspect(game, opts) do
+    if Process.get(:chess_repl_compact) do
+      "#Chess.Game<>"
+    else
+      Inspect.Any.inspect(game, opts)
+    end
+  end
+end
