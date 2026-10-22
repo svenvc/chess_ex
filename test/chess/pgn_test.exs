@@ -224,6 +224,26 @@ defmodule Chess.PGNTest do
       P . P . Q P P P
       . . K R . B . R
       """
+    },
+    %{
+      file: "fen_start.pgn",
+      event: "FEN Start",
+      white: "Engine",
+      black: "Engine",
+      result: "1-0",
+      plies: 16,
+      checkmate: false,
+      in_check: false,
+      final: """
+      r . b q . r k .
+      . . p n b p p p
+      p . . p . n . .
+      . p . . p . . .
+      . . . P P . . .
+      . B P . . N . P
+      P P . . . P P .
+      R N B Q R . K .
+      """
     }
   ]
 
@@ -456,6 +476,67 @@ defmodule Chess.PGNTest do
       assert read.moves == pgn.moves
       assert read.result == pgn.result
       assert read.comments == pgn.comments
+    end
+  end
+
+  describe "a game that starts from a FEN" do
+    @fen "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"
+    @fen_black "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 2 3"
+
+    test "reads the moves against the position of the tag" do
+      pgn = PGN.parse(~s([SetUp "1"]\n[FEN "#{@fen}"]\n\n3. Bb5 a6 1-0))
+
+      assert pgn.moves == [{:f1, :b5}, {:a7, :a6}]
+      assert pgn.game.board[:b5] == :B
+    end
+
+    test "raises when a move is not legal in that position" do
+      assert_raise ParseError, ~r/no legal move matches/, fn ->
+        PGN.parse(~s([FEN "#{@fen}"]\n\n3. Nc6 Nc6 1-0))
+      end
+    end
+
+    test "raises when the tag is not a FEN record" do
+      assert_raise ParseError, ~r/the FEN tag is not a FEN record/, fn ->
+        PGN.parse(~s([FEN "not a FEN record"]\n\n1. e4 1-0))
+      end
+    end
+
+    test "the move numbers start in the middle of the game" do
+      pgn = PGN.parse(~s([FEN "#{@fen}"]\n\n3. Bb5 a6 1-0))
+
+      assert PGN.to_pgn(pgn) =~ "3. Bb5 a6"
+    end
+
+    test "the move numbers of a game that starts with Black carry the dots" do
+      pgn = PGN.parse(~s([FEN "#{@fen_black}"]\n\n3... Nf6 1-0))
+
+      assert PGN.to_pgn(pgn) =~ "3... Nf6"
+    end
+
+    test "writes the position of the game as a tag" do
+      pgn = PGN.parse(~s([FEN "#{@fen}"]\n\n3. Bb5 a6 1-0))
+
+      text = PGN.to_pgn(pgn)
+
+      assert text =~ ~s([SetUp "1"]\n)
+      assert text =~ ~s([FEN "#{@fen}"]\n)
+    end
+
+    test "a game that starts from the initial position is written without the tag" do
+      text = PGN.to_pgn(PGN.parse("1. e4 e5 1-0"))
+
+      refute text =~ "SetUp"
+      refute text =~ "FEN"
+    end
+
+    test "the game of the fixture survives the round trip" do
+      pgn = PGN.parse_file(fixture_path("fen_start.pgn"))
+      read = PGN.parse(PGN.to_pgn(pgn))
+
+      assert read.moves == pgn.moves
+      assert read.game.board == pgn.game.board
+      assert read.headers["FEN"] == @fen
     end
   end
 

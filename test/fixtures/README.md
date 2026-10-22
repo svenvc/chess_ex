@@ -1,13 +1,13 @@
 # Test fixtures
 
-Ten well known games in PGN and one synthetic game, used as the regression
+Ten well known games in PGN and two synthetic games, used as the regression
 suite for the PGN reader and the SAN parser. `test/chess/pgn_test.exs` reads
 every file, checks the headers, the number of moves, the final position and
 the state the game ends in, and writes each game back out and reads it again.
 `test/chess/rules_test.exs` plays every file a second time, ply by ply, and
 holds the state of the game after every ply against a second derivation of the
-rules: the castling rights and the en passant target are worked out again and
-the board is read move by move.
+rules: the castling rights, the en passant target and the two counters of a
+FEN record are worked out again and the board is read move by move.
 
 The files are not part of the library; they are only used by the tests.
 
@@ -32,12 +32,13 @@ is read at all is a file whose markers are right.
 | `Kasparovs-Immortal-Kasparov-Topalov.pgn` | Hoogovens Group A | Garry Kasparov | Veselin Topalov | 1-0 | 87 | 87 | `44.Qa7` | resignation, quiet |
 | `aronian-anand-2013.pgn` | Tata Steel-A 75th | Levon Aronian | Viswanathan Anand | 0-1 | 46 | – | `23.Qd3 Be3` | resignation, quiet |
 | `synthetic_special_moves.pgn` | Synthetic Special Moves | Engine | Engine | 1-0 | 31 | – | `16.O-O-O` | resignation, quiet |
+| `fen_start.pgn` | FEN Start | Engine | Engine | 1-0 | 16 | – | `10...Nbd7` | resignation, quiet |
 
 Three games end in checkmate, two in a resignation with the loser in check,
-five in a quiet resignation. The two games without a `PlyCount` tag are the
-older ones; their number of moves was counted by hand. The synthetic game is
-not a game that was played; it ends in a quiet position like the other
-resignations, only to cover the special moves.
+seven in a quiet resignation. The games without a `PlyCount` tag are the older
+ones and the synthetic ones; their number of moves was counted by hand. The
+synthetic games are not games that were played; they end in a quiet position
+like the other resignations, only to cover what the famous games lack.
 
 ## Notes on the files
 
@@ -67,6 +68,19 @@ resignations, only to cover the special moves.
 
   The game has no mate in it: it ends in a quiet position after `16.O-O-O`
   with the result `1-0`.
+
+- **FEN Start** (`fen_start.pgn`): not a game that was played, but a game that
+  starts in the middle of one. The position stands in the tag pair `FEN` -
+  the one after `2...Nc6` in the Ruy Lopez - and the moves of the file are
+  read and written against it, with the move numbers of the file counting
+  from the third move on:
+
+  ```
+  [SetUp "1"]
+  [FEN "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"]
+
+  3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Nb8 10. d4 Nbd7 1-0
+  ```
 
 - **Move numbers**: the files are not consistent about them. The Dufresne file
   writes `7.O-O d3`, without a number for the move of Black, and the

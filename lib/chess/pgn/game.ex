@@ -10,7 +10,9 @@ defmodule Chess.PGN.Game do
     * `:result` - the result of the game: `"1-0"`, `"0-1"`, `"1/2-1/2"` or `"*"`
     * `:comments` - the comments of the game, keyed by the number of moves
       played before the comment
-    * `:game` - the `Chess.Game` state after the last move
+    * `:game` - the `Chess.Game` state after the last move. Its `:start`
+      field holds the position the moves were played from; it is `nil` for a
+      game that starts from the initial position.
   """
 
   defstruct headers: %{}, moves: [], result: nil, comments: %{}, game: nil

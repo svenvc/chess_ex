@@ -35,8 +35,11 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   It defines `apply/2`, shadowing `Kernel.apply/2` via
   `import Kernel, except: [apply: 2]` — don't remove that line.
 - `Chess.Game` — struct (`board`, `side_to_move`, `castling`, `en_passant`,
-  `moves`); `Game.new/0` is the initial position. `moves` is newest-first.
-  Castling rights and the en passant target live here because they **cannot**
+  `halfmove_clock`, `fullmove_number`, `moves`, `start`); `Game.new/0` is the
+  initial position. `moves` is newest-first. `start` is the position the game
+  began at (`nil` = the initial position); `Chess.FEN.parse/1` sets it, so
+  that the moves of a game can be played back from there. Castling rights, the
+  en passant target and the two counters live here because they **cannot**
   be derived from the board alone. Generation/applying go through `Chess.Rules`.
 - `Chess.Evaluation` — static score in centipawns, White-relative (positive =
   White is better): `evaluate/1` (a game or a bare board), `evaluate/2` (score
@@ -48,13 +51,19 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   resolve against `Rules.legal_moves/1`, so a token always names exactly one
   move; the `+`/`#` markers are checked against the engine (opt out with
   `validate_marker: false`). Raises `Chess.SAN.ParseError`.
+- `Chess.FEN` — the FEN record. `parse/1` reads a record into a
+  `Chess.Game`, `to_fen/1` writes a game back. The reader is strict about the
+  shape of a record and forgiving about the position it describes; the writer
+  is canonical (the castling rights come out as `KQkq`). Raises
+  `Chess.FEN.ParseError`.
 - `Chess.PGN` — reading and writing PGN: `parse/2`, `parse_all/2`,
   `parse_file/2`, `to_pgn/1`. The reader is forgiving about the shape of the
   movetext (move numbers, comments, variations, NAGs) and strict about the
   moves: a move that is not legal raises `Chess.PGN.ParseError`. A game is a
   `Chess.PGN.Game` struct (`headers`, `moves`, `result`, `comments`, `game`).
   Its `moves` are **chronological**, the other way around than `Chess.Game`.
-  Games that start from a FEN are not supported yet.
+  A game that starts from a FEN holds the position in the tag pair `FEN`; the
+  moves are then read and written against that position.
 - `Chess.Narrator` — turns a game into readable text: `describe/1` returns it,
   `print/1` writes it out. Every ply is the SAN token, the move in words
   (with captures, promotions, castling and check), the board `Board.to_ascii/1`
@@ -68,11 +77,12 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   `rules_test.exs` includes perft from the initial position
   (20 / 400 / 8902 / 197281), which is the main regression net for generation,
   and replays every game of `test/fixtures/` ply by ply, holding the state of
-  the game after every ply against a second derivation of the castling rights
-  and the en passant target.
-  `test/fixtures/` holds ten well known games in PGN plus one synthetic game
-  that covers the special moves the famous games lack; the files are read by
-  `pgn_test.exs`, the results of that suite stand in `test/fixtures/README.md`.
+  the game after every ply against a second derivation of the castling rights,
+  the en passant target and the two counters of a FEN record.
+  `test/fixtures/` holds ten well known games in PGN plus two synthetic games:
+  one that covers the special moves the famous games lack and one that starts
+  from a FEN; the files are read by `pgn_test.exs`, the results of that suite
+  stand in `test/fixtures/README.md`.
 
 ## Conventions that differ from defaults
 
@@ -95,7 +105,8 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   marked TODO); `doc/UNICODE.md` lists the 12 piece glyphs. A board SVG lives
   in `doc/`.
 - README's Wikipedia links (FEN, PGN, algebraic notation, UCI) are the
-  roadmap for notations not yet implemented.
+  roadmap for the notations of the library; FEN, PGN and algebraic notation are
+  implemented, UCI is not.
 
 ## Not part of the project
 

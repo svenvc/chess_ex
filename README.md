@@ -51,6 +51,36 @@ Rd1 Qe6 15. Bxd7+ Nxd7 16. Qb8+ Nxb8 17. Rd8#
 1-0
 ```
 
+A position read from a FEN record. The record holds the placement of the
+pieces, the side to move, the castling rights, the en passant target and the
+two counters of the game:
+
+```elixir
+iex> game = Chess.FEN.parse("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3")
+iex> Chess.Board.print(game.board)
+r . b q k b n r
+p p p p . p p p
+. . n . . . . .
+. . . . p . . .
+. . . . P . . .
+. . . . . N . .
+P P P P . P P P
+R N B Q K B . R
+iex> game.side_to_move
+:white
+```
+
+The position is written back as a record:
+
+```elixir
+iex> IO.puts(Chess.FEN.to_fen(game))
+r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3
+```
+
+A PGN game may start from a position of its own. The position then stands in
+the tag pair `FEN`, and the moves of the game are read and written against
+it.
+
 A game described step by step. Every ply holds the move in algebraic notation,
 the move in words, the board it leads to and the strength of the position, and
 the text ends with how the game stopped:

@@ -14,9 +14,14 @@ defmodule Chess.PGN do
   both sides, and comments may hold anything at all. It is strict about the
   moves themselves - a move that is not legal in the position it is played in
   is an error, not a warning.
+
+  A game that starts from a position of its own holds it in a `FEN` tag
+  pair, as the standard asks; the moves of the game are then read and written
+  against that position. A game that starts from the initial position is
+  written without the tag pairs.
   """
 
-  alias Chess.{Rules, SAN}
+  alias Chess.{FEN, Rules, SAN}
   alias Chess.PGN.Game
   alias Chess.PGN.ParseError
 
@@ -73,6 +78,9 @@ defmodule Chess.PGN do
   The tag pairs of the seven tag roster are written first, the other tag
   pairs follow in alphabetical order. The moves are written in algebraic
   notation, wrapped at 80 columns, and the result ends the game.
+
+  A game that does not start from the initial position is written with the
+  tag pairs `SetUp` and `FEN`, which hold the position it starts from.
   """
   def to_pgn(%Game{} = game) do
     headers = write_headers(game)
@@ -295,12 +303,9 @@ defmodule Chess.PGN do
 
   defp build_game(%{tags: tags, movetext: movetext}, opts) do
     headers = Map.new(tags)
+    start = start_position(headers)
 
-    if Map.has_key?(headers, "FEN") do
-      raise ParseError, "games that start from a FEN are not supported yet"
-    end
-
-    {moves, comments, result, game} = play(movetext, headers, opts)
+    {moves, comments, result, game} = play(movetext, headers, start, opts)
 
     %Game{
       headers: headers,
@@ -311,15 +316,32 @@ defmodule Chess.PGN do
     }
   end
 
+  # The position a game starts from: the FEN of the tag pair, if the document
+  # has one, and the initial position otherwise.
+  defp start_position(headers) do
+    case headers["FEN"] do
+      nil ->
+        Chess.Game.new()
+
+      fen ->
+        try do
+          FEN.parse(fen)
+        rescue
+          error in FEN.ParseError ->
+            raise ParseError, "the FEN tag is not a FEN record: #{Exception.message(error)}"
+        end
+    end
+  end
+
   # Play the moves of the game and collect what the document says about it.
-  defp play(movetext, headers, opts) do
+  defp play(movetext, headers, start, opts) do
     {moves, _ply, comments, result, game} =
-      Enum.reduce(movetext, {[], 0, %{}, nil, Chess.Game.new()}, fn token, acc ->
+      Enum.reduce(movetext, {[], 0, %{}, nil, start}, fn token, acc ->
         {moves, ply, comments, result, game} = acc
 
         case token do
           {:move_number, number} ->
-            validate_move_number!(number, ply)
+            validate_move_number!(number, ply, start)
             acc
 
           {:san, token} ->
@@ -345,12 +367,22 @@ defmodule Chess.PGN do
   end
 
   # The number of a move is the number of the move of the side that starts.
-  defp validate_move_number!(number, ply) do
-    expected = div(ply, 2) + 1
+  # A game that starts from a FEN begins in the middle of the numbering.
+  defp validate_move_number!(number, ply, start) do
+    expected = move_number(ply, start)
 
     if number != expected do
       raise ParseError, "expected move #{expected}, found #{number}"
     end
+  end
+
+  # The number of the full move a ply belongs to. The number goes up after
+  # the move of Black, so a game that starts with the move of Black ends its
+  # first full move one move earlier.
+  defp move_number(ply, start) do
+    played = if start.side_to_move == :white, do: div(ply, 2), else: div(ply + 1, 2)
+
+    start.fullmove_number + played
   end
 
   # A move that cannot be played is a fault of the document, not of the
@@ -381,13 +413,37 @@ defmodule Chess.PGN do
     others =
       game.headers
       |> Map.drop(@roster)
+      |> Map.drop(["FEN", "SetUp"])
       |> Enum.sort_by(fn {name, _value} -> name end)
 
-    @roster
-    |> Enum.map(&{&1, values[&1]})
-    |> Kernel.++(others)
-    |> Enum.map_join("\n", fn {name, value} -> ~s([#{name} "#{escape(value)}"]) end)
+    tags =
+      @roster
+      |> Enum.map(&{&1, values[&1]})
+      |> Kernel.++(others)
+      |> Enum.map_join("\n", fn {name, value} -> ~s([#{name} "#{escape(value)}"]) end)
+
+    case setup_tags(game) do
+      "" -> tags
+      setup -> tags <> "\n" <> setup
+    end
   end
+
+  # The tag pairs of a game that does not start from the initial position:
+  # the position it starts from and the marker that says so.
+  defp setup_tags(game) do
+    start = game_start(game)
+
+    if FEN.to_fen(start) == FEN.to_fen(Chess.Game.new()) do
+      ""
+    else
+      ~s([SetUp "1"]\n[FEN "#{FEN.to_fen(start)}"])
+    end
+  end
+
+  # The position the moves of the game are played from: the start of the
+  # final game state, or the initial position when the game does not know.
+  defp game_start(%Game{game: %Chess.Game{start: start}}) when not is_nil(start), do: start
+  defp game_start(%Game{}), do: Chess.Game.new()
 
   # A quote inside a tag value is escaped with a backslash.
   defp escape(value) do
@@ -397,13 +453,15 @@ defmodule Chess.PGN do
   end
 
   defp write_movetext(game) do
+    start = game_start(game)
+
     {tokens, _state} =
       game.moves
       |> Enum.with_index()
-      |> Enum.reduce({[], Chess.Game.new()}, fn {move, ply}, {tokens, state} ->
+      |> Enum.reduce({[], start}, fn {move, ply}, {tokens, state} ->
         tokens = tokens ++ comment_tokens(game.comments, ply)
         san = write_san(move, state)
-        tokens = if rem(ply, 2) == 0, do: tokens ++ ["#{div(ply, 2) + 1}."], else: tokens
+        tokens = tokens ++ move_number_tokens(ply, start)
 
         {tokens ++ [san], Rules.apply(state, move)}
       end)
@@ -416,6 +474,19 @@ defmodule Chess.PGN do
     result = game.result || game.headers["Result"] || "*"
 
     Enum.join(lines ++ [result], "\n")
+  end
+
+  # The number of a move: it is written before the move of White and, when
+  # the game starts with the move of Black, before that first move.
+  defp move_number_tokens(ply, start) do
+    number = move_number(ply, start)
+
+    cond do
+      start.side_to_move == :white and rem(ply, 2) == 0 -> ["#{number}."]
+      start.side_to_move == :black and ply == 0 -> ["#{number}..."]
+      start.side_to_move == :black and rem(ply, 2) == 1 -> ["#{number}."]
+      true -> []
+    end
   end
 
   defp comment_tokens(comments, ply) do

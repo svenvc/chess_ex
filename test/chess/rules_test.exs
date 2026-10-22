@@ -348,7 +348,9 @@ defmodule Chess.RulesTest do
 
   # Play the moves of a game and check the state of the game after every ply.
   defp replay(pgn) do
-    Enum.reduce(Enum.with_index(pgn.moves, 1), Game.new(), fn {move, ply}, game ->
+    start = pgn.game.start || Game.new()
+
+    Enum.reduce(Enum.with_index(pgn.moves, 1), start, fn {move, ply}, game ->
       context = "ply #{ply}: #{inspect(move)}"
 
       assert move in Rules.legal_moves(game), "#{context}: the move is not legal"
@@ -376,6 +378,13 @@ defmodule Chess.RulesTest do
 
       assert next.en_passant == expected_en_passant(game, move),
              "#{context}: wrong en passant target"
+
+      # the counters of the FEN record are worked out again
+      assert next.halfmove_clock == expected_halfmove_clock(game, move),
+             "#{context}: wrong halfmove clock"
+
+      assert next.fullmove_number == expected_fullmove_number(game),
+             "#{context}: wrong fullmove number"
 
       next
     end)
@@ -470,6 +479,24 @@ defmodule Chess.RulesTest do
     else
       nil
     end
+  end
+
+  # The halfmove clock of the next position: it starts over after a capture
+  # or a pawn move and grows by one after every other move.
+  defp expected_halfmove_clock(game, move) do
+    board = game.board
+    from = move_from(move)
+
+    if captured_square(board, move) != nil or Piece.is_pawn?(Board.at(board, from)) do
+      0
+    else
+      game.halfmove_clock + 1
+    end
+  end
+
+  # The number of the full move goes up after the move of Black.
+  defp expected_fullmove_number(game) do
+    if game.side_to_move == :black, do: game.fullmove_number + 1, else: game.fullmove_number
   end
 
   # The square a move takes a piece on: the destination of an ordinary move,

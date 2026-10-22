@@ -10,6 +10,9 @@ defmodule Chess.GameTest do
     assert game.side_to_move == :white
     assert game.en_passant == nil
     assert game.moves == []
+    assert game.halfmove_clock == 0
+    assert game.fullmove_number == 1
+    assert game.start == nil
 
     assert game.castling ==
              MapSet.new([

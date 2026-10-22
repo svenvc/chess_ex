@@ -10,9 +10,16 @@ defmodule Chess.Game do
   The game state stores everything that cannot be derived from the board alone:
   the side to move, the remaining castling rights and the current en passant
   target square (the square behind a pawn that just advanced two squares).
+  It also holds the two counters of a FEN record: the halfmove clock and the
+  number of the full move that is being played.
 
   `moves` is the move history, newest first. It is not needed for move
   generation or legality; it exists for game records and future draw rules.
+
+  `start` is the position the game started from. It is `nil` for a game that
+  starts from the initial position; `Chess.FEN.parse/1` sets it to the
+  position it read, so that the moves of the game can be played back from
+  there.
   """
 
   alias Chess.Board
@@ -21,7 +28,10 @@ defmodule Chess.Game do
             side_to_move: :white,
             castling: MapSet.new(),
             en_passant: nil,
-            moves: []
+            halfmove_clock: 0,
+            fullmove_number: 1,
+            moves: [],
+            start: nil
 
   @castling_rights MapSet.new([
                      {:white, :king_side},

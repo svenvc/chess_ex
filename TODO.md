@@ -12,7 +12,8 @@ Ordered roughly by dependency.
   detection, check/checkmate/stalemate, move application (incl. special moves).
   Validated by perft (20 / 400 / 8902 / 197281).
 - [x] `Chess.Game` state struct: board, side to move, castling rights,
-  en passant target, move history.
+  en passant target, move history, the two counters of a FEN record and the
+  position the game started from.
 - [ ] `Chess.Game` orchestration: draw conditions (threefold repetition,
   fifty-move rule, insufficient material) and game status/winner.
 - [x] Board lookup: `Board.at/2` added (returns `nil` for empty squares,
@@ -23,13 +24,15 @@ Ordered roughly by dependency.
 
 ## Notations
 
-- [ ] FEN parsing/serialization (references in README).
+- [x] FEN parsing/serialization: `Chess.FEN` reads a record into a
+  `Chess.Game` and writes one back.
 - [x] Algebraic notation: `Chess.SAN` reads a SAN token and writes one,
   resolved against the legal moves of the position. Long algebraic notation is
   still open.
 - [x] PGN reading/writing: `Chess.PGN` reads a document of games
   (`parse/2`, `parse_all/2`, `parse_file/2`) and writes a game back
-  (`to_pgn/1`). Games that start from a FEN are not supported yet.
+  (`to_pgn/1`). Games that start from a FEN are read and written with the
+  tag pairs `SetUp` and `FEN`.
 - [x] Game description: `Chess.Narrator` writes a game out ply by ply — the
   SAN token, the move in words, the board and the evaluated strength — and
   ends with how the game stopped.
@@ -54,8 +57,8 @@ Ordered roughly by dependency.
   `test/fixtures/README.md`.
 - [x] Corpus replay: every game of `test/fixtures/` is played again ply by ply
   in `rules_test.exs`, and the state of the game after every ply is held
-  against a second derivation of the castling rights and the en passant
-  target.
+  against a second derivation of the castling rights, the en passant target
+  and the two counters of a FEN record.
 - [x] Fill in `doc/RULES.md` — core moves done; draws section still open
   (see its TODO).
 - [x] README: usage examples (`iex -S mix`, `Board.print/1`, reading a PGN).

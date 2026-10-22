@@ -97,7 +97,8 @@ defmodule Chess.Rules do
   Apply `move` to the game and return the resulting game state.
 
   This assumes the move is legal for the side to move. Besides the board, it
-  updates the side to move, castling rights and the en passant target.
+  updates the side to move, castling rights, the en passant target and the
+  two counters of a FEN record.
   """
   def apply(%Game{} = game, move) do
     color = game.side_to_move
@@ -111,6 +112,8 @@ defmodule Chess.Rules do
         side_to_move: opponent(color),
         en_passant: en_passant,
         castling: update_castling(game.castling, board, color, move, captured),
+        halfmove_clock: next_halfmove_clock(game, board, move, captured),
+        fullmove_number: next_fullmove_number(game, color),
         moves: [move | game.moves]
     }
   end
@@ -506,6 +509,23 @@ defmodule Chess.Rules do
 
   # Remove one castling right from the set.
   defp revoke(castling, color, side), do: MapSet.delete(castling, {color, side})
+
+  ## Counters
+
+  # The halfmove clock counts the plies since the last capture or the last
+  # pawn move; a capture or a pawn move starts it over.
+  defp next_halfmove_clock(game, board, move, captured) do
+    if captured != nil or Piece.is_pawn?(Board.at(board, move_from(move))) do
+      0
+    else
+      game.halfmove_clock + 1
+    end
+  end
+
+  # The number of the full move goes up after the move of Black.
+  defp next_fullmove_number(game, color) do
+    if color == :black, do: game.fullmove_number + 1, else: game.fullmove_number
+  end
 
   ## Helpers
 

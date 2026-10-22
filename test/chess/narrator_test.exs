@@ -1,7 +1,7 @@
 defmodule Chess.NarratorTest do
   use ExUnit.Case
 
-  alias Chess.{Game, Narrator, Rules}
+  alias Chess.{FEN, Game, Narrator, Rules}
 
   # The steps of a description, each as a list of lines.
   defp steps(input) do
@@ -231,6 +231,32 @@ defmodule Chess.NarratorTest do
         """)
 
       assert last_step(pgn) == last_step(pgn.moves)
+    end
+
+    test "describes a PGN game that starts from a FEN" do
+      pgn =
+        Chess.PGN.parse("""
+        [SetUp "1"]
+        [FEN "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3"]
+
+        3. Bb5 a6 1-0
+        """)
+
+      [initial | _moves] = steps(pgn)
+
+      assert initial |> Enum.at(1) == "r . b q k b n r"
+      assert headings(pgn) |> Enum.drop(-1) == ["Initial position", "1. Bb5", "2. a6"]
+    end
+
+    test "describes a game of our own that starts from a FEN" do
+      game =
+        FEN.parse("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3")
+        |> Rules.apply({:f1, :b5})
+
+      [initial | _moves] = steps(game)
+
+      assert initial |> Enum.at(1) == "r . b q k b n r"
+      assert headings(game) |> Enum.drop(-1) == ["Initial position", "1. Bb5"]
     end
 
     test "raises when a move is not legal in the position it is played in" do

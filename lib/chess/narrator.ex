@@ -55,7 +55,7 @@ defmodule Chess.Narrator do
       moves: pgn.moves,
       result: pgn.result,
       headers: pgn.headers,
-      start: Game.new(),
+      start: game_start(pgn),
       label: "Initial position"
     }
   end
@@ -69,7 +69,7 @@ defmodule Chess.Narrator do
       moves: Enum.reverse(game.moves),
       result: nil,
       headers: nil,
-      start: Game.new(),
+      start: game.start || Game.new(),
       label: "Initial position"
     }
   end
@@ -77,6 +77,11 @@ defmodule Chess.Narrator do
   defp parts(moves) when is_list(moves) do
     %{moves: moves, result: nil, headers: nil, start: Game.new(), label: "Initial position"}
   end
+
+  # The position the moves of a game are played from: the start of the final
+  # game state, or the initial position when the game does not know.
+  defp game_start(%PGN.Game{game: %Game{start: start}}) when not is_nil(start), do: start
+  defp game_start(_input), do: Game.new()
 
   # Play the moves and collect a step for each of them.
   defp play(moves, start) do
