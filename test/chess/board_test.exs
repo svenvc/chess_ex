@@ -12,16 +12,16 @@ defmodule Chess.BoardTest do
       initial_board
       |> Enum.map(fn {position, _piece} -> position end)
 
-    assert initial_positions |> Enum.count(&Position.is_black?/1) == 16
-    assert initial_positions |> Enum.count(&Position.is_white?/1) == 16
+    assert initial_positions |> Enum.count(&Position.dark?/1) == 16
+    assert initial_positions |> Enum.count(&Position.light?/1) == 16
 
     initial_pieces =
       initial_board
       |> Enum.map(fn {_position, piece} -> piece end)
 
-    assert initial_pieces |> Enum.count(&Piece.is_black?/1) == 16
-    assert initial_pieces |> Enum.count(&Piece.is_white?/1) == 16
-    assert initial_pieces |> Enum.count(&Piece.is_king?/1) == 2
+    assert initial_pieces |> Enum.count(&Piece.black?/1) == 16
+    assert initial_pieces |> Enum.count(&Piece.white?/1) == 16
+    assert initial_pieces |> Enum.count(&Piece.king?/1) == 2
     assert initial_pieces |> Enum.count(&Piece.is_queen?/1) == 2
     assert initial_pieces |> Enum.count(&Piece.is_rook?/1) == 4
     assert initial_pieces |> Enum.count(&Piece.is_bishop?/1) == 4
@@ -129,5 +129,57 @@ defmodule Chess.BoardTest do
 
   test "move/3 requires a piece on the from square" do
     assert_raise KeyError, fn -> Board.move(Board.initial(), :e4, :e5) end
+  end
+
+  test "rows/1 returns the board rank by rank, including empty squares" do
+    rows = Board.rows(Board.initial())
+
+    assert length(rows) == 8
+    assert Enum.all?(rows, fn row -> length(row) == 8 end)
+
+    assert hd(rows) == [
+             {:a8, :r},
+             {:b8, :n},
+             {:c8, :b},
+             {:d8, :q},
+             {:e8, :k},
+             {:f8, :b},
+             {:g8, :n},
+             {:h8, :r}
+           ]
+
+    assert List.last(rows) == [
+             {:a1, :R},
+             {:b1, :N},
+             {:c1, :B},
+             {:d1, :Q},
+             {:e1, :K},
+             {:f1, :B},
+             {:g1, :N},
+             {:h1, :R}
+           ]
+
+    assert Enum.at(rows, 2) |> Enum.map(fn {_position, piece} -> piece end) |> Enum.uniq() == [
+             nil
+           ]
+
+    positions =
+      rows
+      |> Enum.flat_map(& &1)
+      |> Enum.map(fn {position, _piece} -> position end)
+
+    assert Enum.sort(positions) == Enum.sort(Position.all())
+  end
+
+  test "to_ascii/1 renders the board rank by rank" do
+    lines =
+      Board.initial()
+      |> Board.to_ascii()
+      |> String.split("\n")
+
+    assert length(lines) == 8
+    assert hd(lines) == "r n b q k b n r"
+    assert List.last(lines) == "R N B Q K B N R"
+    assert Enum.at(lines, 2) == ". . . . . . . ."
   end
 end

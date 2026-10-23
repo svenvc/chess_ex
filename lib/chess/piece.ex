@@ -13,18 +13,62 @@ defmodule Chess.Piece do
 
   def black_pieces, do: @black_pieces
 
-  def is_valid?(piece) when piece in @black_pieces, do: true
-  def is_valid?(piece) when piece in @white_pieces, do: true
-  def is_valid?(_piece), do: false
+  def valid?(piece) when piece in @black_pieces, do: true
+  def valid?(piece) when piece in @white_pieces, do: true
+  def valid?(_piece), do: false
 
-  def is_black?(piece) when piece in @black_pieces, do: true
-  def is_black?(_piece), do: false
+  @doc """
+  Return the type of a piece, or nil for something that is not a piece.
+  """
+  def type(piece) when piece in [:K, :k], do: :king
+  def type(piece) when piece in [:Q, :q], do: :queen
+  def type(piece) when piece in [:R, :r], do: :rook
+  def type(piece) when piece in [:B, :b], do: :bishop
+  def type(piece) when piece in [:N, :n], do: :knight
+  def type(piece) when piece in [:P, :p], do: :pawn
+  def type(_piece), do: nil
 
-  def is_white?(piece) when piece in @white_pieces, do: true
-  def is_white?(_piece), do: false
+  @doc """
+  Return the color of a piece, or nil for something that is not a piece.
+  """
+  def color(piece) when piece in @white_pieces, do: :white
+  def color(piece) when piece in @black_pieces, do: :black
+  def color(_piece), do: nil
 
-  def is_king?(piece) when piece == :k or piece == :K, do: true
-  def is_king?(_piece), do: false
+  @doc """
+  Return true if the piece has the given color.
+  """
+  def of_color?(piece, color), do: color(piece) == color
+
+  @doc """
+  Return the rank change of a pawn of the given color: `1` for White and `-1`
+  for Black.
+  """
+  def pawn_direction(:white), do: 1
+  def pawn_direction(:black), do: -1
+
+  @doc """
+  Return the rank a pawn of the given color starts on: `2` for White and `7`
+  for Black.
+  """
+  def start_rank(:white), do: 2
+  def start_rank(:black), do: 7
+
+  @doc """
+  Return the rank a pawn of the given color promotes on: `8` for White and `1`
+  for Black.
+  """
+  def promotion_rank(:white), do: 8
+  def promotion_rank(:black), do: 1
+
+  def black?(piece) when piece in @black_pieces, do: true
+  def black?(_piece), do: false
+
+  def white?(piece) when piece in @white_pieces, do: true
+  def white?(_piece), do: false
+
+  def king?(piece) when piece == :k or piece == :K, do: true
+  def king?(_piece), do: false
 
   def is_queen?(piece) when piece == :q or piece == :Q, do: true
   def is_queen?(_piece), do: false

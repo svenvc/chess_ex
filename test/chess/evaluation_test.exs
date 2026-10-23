@@ -98,7 +98,7 @@ defmodule Chess.EvaluationTest do
   end
 
   defp swap_color(piece) do
-    if Piece.is_white?(piece) do
+    if Piece.white?(piece) do
       piece |> Atom.to_string() |> String.downcase() |> String.to_atom()
     else
       piece |> Atom.to_string() |> String.upcase() |> String.to_atom()

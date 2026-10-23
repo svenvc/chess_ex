@@ -16,7 +16,7 @@ defmodule Chess.Narrator do
   as it stands.
   """
 
-  alias Chess.{Board, Evaluation, Game, Piece, Position, Rules, SAN}
+  alias Chess.{Board, Castling, Color, Evaluation, Game, Move, Piece, Rules, SAN}
   alias Chess.PGN
 
   @doc """
@@ -54,7 +54,7 @@ defmodule Chess.Narrator do
 
   def describe_last_move(%Game{} = game) do
     [last | earlier] = game.moves
-    start = game.start || Game.new()
+    start = Game.start_position(game)
     before = replay_moves(Enum.reverse(earlier), start)
 
     unless Rules.legal_move?(before, last) do
@@ -106,10 +106,10 @@ defmodule Chess.Narrator do
 
   defp parts(%Game{} = game) do
     %{
-      moves: Enum.reverse(game.moves),
+      moves: Game.moves_in_order(game),
       result: nil,
       headers: nil,
-      start: game.start || Game.new(),
+      start: Game.start_position(game),
       label: "Initial position"
     }
   end
@@ -120,7 +120,7 @@ defmodule Chess.Narrator do
 
   # The position the moves of a game are played from: the start of the final
   # game state, or the initial position when the game does not know.
-  defp game_start(%PGN.Game{game: %Game{start: start}}) when not is_nil(start), do: start
+  defp game_start(%PGN.Game{game: %Game{} = game}), do: Game.start_position(game)
   defp game_start(_input), do: Game.new()
 
   # Play the moves and collect a step for each of them.
@@ -188,7 +188,7 @@ defmodule Chess.Narrator do
     status = Game.status(game)
 
     check =
-      if status != :checkmate and Rules.in_check?(game) do
+      if status != :checkmate and Rules.check_status(game) == :check do
         "#{game.side_to_move} is in check. "
       else
         ""
@@ -243,12 +243,13 @@ defmodule Chess.Narrator do
   end
 
   # What moved and where it went.
-  defp base_clause({:castle, from, to}, before) do
-    "#{color(before)} king castles #{castle_side(to)} from #{from} to #{to}"
+  defp base_clause({:castle, from, to} = move, before) do
+    "#{color(before)} king castles #{castle_side(Move.castle_side(move))} from #{from} to #{to}"
   end
 
   defp base_clause(move, before) do
-    {from, to} = shape(move)
+    from = Move.from(move)
+    to = Move.to(move)
     piece = Board.at(before.board, from)
 
     "#{color(before)} #{piece_name(piece)} from #{from} to #{to}"
@@ -257,7 +258,7 @@ defmodule Chess.Narrator do
   # What else happened: the rook of a castle, a capture, a promotion, a pawn
   # that advanced two squares, a check.
   defp details(move, before, next) do
-    rook_clause(move) ++
+    rook_clause(move, before) ++
       capture_clause(move, before) ++
       promotion_clause(move) ++
       double_push_clause(move, before) ++
@@ -265,61 +266,56 @@ defmodule Chess.Narrator do
   end
 
   # The rook of a castle stands on the other side of the king afterwards.
-  defp rook_clause({:castle, from, to}) do
-    rank = Position.rank(from)
+  defp rook_clause({:castle, _from, _to} = move, before) do
+    color = before.side_to_move
+    side = Move.castle_side(move)
 
-    {rook_from, rook_to} =
-      case Position.file(to) do
-        :g -> {:h, :f}
-        :c -> {:a, :d}
-      end
-
-    ["rook from #{Position.new(rook_from, rank)} to #{Position.new(rook_to, rank)}"]
+    [
+      "rook from #{Castling.rook_start(color, side)} to " <>
+        "#{Castling.rook_destination(color, side)}"
+    ]
   end
 
-  defp rook_clause(_move), do: []
+  defp rook_clause(_move, _before), do: []
 
-  # The piece that was taken. En passant is special: the pawn stands beside
-  # the square the capturing pawn moves to.
-  defp capture_clause({:en_passant, from, to}, before) do
-    square = Position.new(Position.file(to), Position.rank(from))
-    piece = Board.at(before.board, square)
-
-    ["captures #{color_name(piece)} #{piece_name(piece)} on #{square} en passant"]
-  end
-
+  # The piece that was taken, on the square of the capture.
   defp capture_clause(move, before) do
-    case captured(move, before) do
-      nil -> []
-      {piece, square} -> ["captures #{color_name(piece)} #{piece_name(piece)} on #{square}"]
+    case Move.capture_square(move) do
+      nil ->
+        []
+
+      square ->
+        case Board.at(before.board, square) do
+          nil ->
+            []
+
+          piece ->
+            [
+              "captures #{color_name(piece)} #{piece_name(piece)} on #{square}" <>
+                capture_suffix(move)
+            ]
+        end
     end
   end
 
-  defp captured({:castle, _from, _to}, _before), do: nil
-
-  defp captured({:promotion, _from, to, _piece}, before),
-    do: capture_at(before.board, to)
-
-  defp captured({_from, to}, before), do: capture_at(before.board, to)
-
-  # The piece on a square, if there is one.
-  defp capture_at(board, square) do
-    case Board.at(board, square) do
-      nil -> nil
-      piece -> {piece, square}
-    end
-  end
+  # En passant is worth saying: the pawn that was taken stood beside the square
+  # the capturing pawn moved to.
+  defp capture_suffix({:en_passant, _from, _to}), do: " en passant"
+  defp capture_suffix(_move), do: ""
 
   # The piece a pawn became.
-  defp promotion_clause({:promotion, _from, _to, piece}), do: ["promotes to #{piece_name(piece)}"]
-  defp promotion_clause(_move), do: []
+  defp promotion_clause(move) do
+    case Move.promotion_piece(move) do
+      nil -> []
+      piece -> ["promotes to #{piece_name(piece)}"]
+    end
+  end
 
   # A pawn that advanced two squares.
   defp double_push_clause(move, before) do
-    {from, to} = shape(move)
-    piece = Board.at(before.board, from)
+    piece = Board.at(before.board, Move.from(move))
 
-    if Piece.is_pawn?(piece) and abs(Position.rank(to) - Position.rank(from)) == 2 do
+    if Piece.is_pawn?(piece) and Move.skipped_square(move) != nil do
       ["advances two squares"]
     else
       []
@@ -362,39 +358,21 @@ defmodule Chess.Narrator do
 
   ## Helpers
 
-  # The origin and the destination of any move shape.
-  defp shape({from, to}), do: {from, to}
-  defp shape({:castle, from, to}), do: {from, to}
-  defp shape({:en_passant, from, to}), do: {from, to}
-  defp shape({:promotion, from, to, _piece}), do: {from, to}
-
   # The side of the board a castle goes to.
-  defp castle_side(to) when to in [:g1, :g8], do: "king side"
-  defp castle_side(_to), do: "queen side"
+  defp castle_side(:king_side), do: "king side"
+  defp castle_side(:queen_side), do: "queen side"
 
   # The name of a piece.
-  defp piece_name(piece) do
-    cond do
-      Piece.is_pawn?(piece) -> "pawn"
-      Piece.is_knight?(piece) -> "knight"
-      Piece.is_bishop?(piece) -> "bishop"
-      Piece.is_rook?(piece) -> "rook"
-      Piece.is_queen?(piece) -> "queen"
-      Piece.is_king?(piece) -> "king"
-    end
-  end
+  defp piece_name(piece), do: piece |> Piece.type() |> Atom.to_string()
 
   # The color of a piece.
-  defp color_name(piece) do
-    if Piece.is_white?(piece), do: "white", else: "black"
-  end
+  defp color_name(piece), do: to_string(Piece.color(piece))
 
   # The color of the side to move.
   defp color(game), do: to_string(game.side_to_move)
 
   # The other color.
-  defp opponent(:white), do: "black"
-  defp opponent(:black), do: "white"
+  defp opponent(color), do: color |> Color.opponent() |> to_string()
 
   # The result of the game, in brackets.
   defp result_suffix(nil), do: ""

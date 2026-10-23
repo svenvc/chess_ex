@@ -21,6 +21,36 @@ defmodule Chess.Position do
     new(Enum.at(@files, file_index - 1), rank)
   end
 
+  @doc """
+  Return the position at the given 1-based file index and rank,
+  or nil when that is off the board.
+  """
+  def at(file_index, rank) when file_index in 1..8 and rank in @ranks do
+    new(file_index, rank)
+  end
+
+  def at(_file_index, _rank), do: nil
+
+  @doc """
+  Move a position by a file and rank delta, or return nil when it leaves the
+  board.
+  """
+  def offset(position, file_delta, rank_delta) do
+    at(file_index(position) + file_delta, rank(position) + rank_delta)
+  end
+
+  @doc """
+  Rotate a position by 180 degrees: a1 becomes h8.
+  """
+  def rotate(position) do
+    new(9 - file_index(position), 9 - rank(position))
+  end
+
+  @doc """
+  Return true if two positions are squares of the same color.
+  """
+  def same_color?(first, second), do: dark?(first) == dark?(second)
+
   def from_string(<<letter, digit>>) when letter in ?a..?h and digit in ?1..?8 do
     new(String.to_atom(<<letter>>), String.to_integer(<<digit>>))
   end
@@ -35,8 +65,8 @@ defmodule Chess.Position do
 
   def all, do: @all
 
-  def is_valid?(position) when position in @all, do: true
-  def is_valid?(_position), do: false
+  def valid?(position) when position in @all, do: true
+  def valid?(_position), do: false
 
   def file(position) when position in [:a1, :a2, :a3, :a4, :a5, :a6, :a7, :a8], do: :a
   def file(position) when position in [:b1, :b2, :b3, :b4, :b5, :b6, :b7, :b8], do: :b
@@ -65,7 +95,7 @@ defmodule Chess.Position do
   def rank(position) when position in [:a7, :b7, :c7, :d7, :e7, :f7, :g7, :h7], do: 7
   def rank(position) when position in [:a8, :b8, :c8, :d8, :e8, :f8, :g8, :h8], do: 8
 
-  def is_black?(position)
+  def dark?(position)
       when position in [
              :a1,
              :c1,
@@ -102,9 +132,9 @@ defmodule Chess.Position do
            ],
       do: true
 
-  def is_black?(_position), do: false
+  def dark?(_position), do: false
 
-  def is_white?(position)
+  def light?(position)
       when position in [
              :b1,
              :d1,
@@ -141,5 +171,5 @@ defmodule Chess.Position do
            ],
       do: true
 
-  def is_white?(_position), do: false
+  def light?(_position), do: false
 end

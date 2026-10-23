@@ -7,7 +7,7 @@ Ordered roughly by dependency.
 
 - [x] `Chess.Move` representation: tagged tuples for normal, castling,
   en passant and promotion moves, with constructors and syntax-only
-  `is_valid?/1`.
+  `Move.valid?/1`.
 - [x] `Chess.Rules`: legal move generation per piece and per side, attack
   detection, check/checkmate/stalemate, move application (incl. special moves).
   Validated by perft (20 / 400 / 8902 / 197281).

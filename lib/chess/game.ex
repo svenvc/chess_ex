@@ -24,7 +24,7 @@ defmodule Chess.Game do
   start from the initial position has to know where its moves begin.
   """
 
-  alias Chess.{Board, Rules}
+  alias Chess.{Board, Castling, Color, Move, Rules}
 
   defstruct board: nil,
             side_to_move: :white,
@@ -35,12 +35,8 @@ defmodule Chess.Game do
             moves: [],
             start: nil
 
-  @castling_rights MapSet.new([
-                     {:white, :king_side},
-                     {:white, :queen_side},
-                     {:black, :king_side},
-                     {:black, :queen_side}
-                   ])
+  @fivefold_repetition 5
+  @threefold_repetition 3
 
   @type status ::
           :ongoing
@@ -60,10 +56,51 @@ defmodule Chess.Game do
     %__MODULE__{
       board: Board.initial(),
       side_to_move: :white,
-      castling: @castling_rights,
+      castling: MapSet.new(Castling.rights()),
       en_passant: nil,
       moves: []
     }
+  end
+
+  @doc """
+  Return the position the game started from.
+
+  This is the game's `:start` field when it has one, and the initial position
+  otherwise.
+  """
+  def start_position(%__MODULE__{start: nil}), do: new()
+  def start_position(%__MODULE__{start: %__MODULE__{} = start}), do: start
+
+  @doc """
+  Return the moves of the game in the order they were played.
+
+  The `:moves` field is newest first; this is the other way around.
+  """
+  def moves_in_order(%__MODULE__{moves: moves}), do: Enum.reverse(moves)
+
+  @doc """
+  Replay the moves of the game and return the positions it went through.
+
+  For a game with moves, the first position is `start_position/1` and the
+  last one is the current position. A game without moves is its own single
+  position. A move that cannot be played, because no piece stands on the
+  square it comes from, ends the replay there: a game that was put together by
+  hand has no history to speak of.
+  """
+  def replay(%__MODULE__{moves: []} = game), do: [game]
+
+  def replay(%__MODULE__{} = game) do
+    replay(start_position(game), moves_in_order(game))
+  end
+
+  @doc """
+  Replay a list of moves from the given position and return the positions it
+  went through, the given position first.
+
+  A move that cannot be played ends the replay there.
+  """
+  def replay(%__MODULE__{} = game, moves) do
+    states(game, moves)
   end
 
   @doc """
@@ -85,11 +122,21 @@ defmodule Chess.Game do
   the game like the other two.
   """
   def status(game) do
+    case Rules.check_status(game) do
+      :checkmate -> :checkmate
+      :stalemate -> :stalemate
+      _other -> draw_status(game)
+    end
+  end
+
+  # The draws, strongest first. The repetition count is worked out once for
+  # the two repetition rules.
+  defp draw_status(game) do
+    repetitions = Rules.repetition_count(game)
+
     cond do
-      Rules.checkmate?(game) -> :checkmate
-      Rules.stalemate?(game) -> :stalemate
-      Rules.fivefold_repetition?(game) -> :draw_fivefold_repetition
-      Rules.threefold_repetition?(game) -> :draw_repetition
+      repetitions >= @fivefold_repetition -> :draw_fivefold_repetition
+      repetitions >= @threefold_repetition -> :draw_repetition
       Rules.seventy_five_move_rule?(game) -> :draw_seventy_five_moves
       Rules.fifty_move_rule?(game) -> :draw_fifty_moves
       Rules.insufficient_material?(game) -> :draw_insufficient_material
@@ -109,14 +156,22 @@ defmodule Chess.Game do
   """
   def winner(game) do
     case status(game) do
-      :checkmate -> opponent(game.side_to_move)
+      :checkmate -> Color.opponent(game.side_to_move)
       _other -> nil
     end
   end
 
-  # The other color.
-  defp opponent(:white), do: :black
-  defp opponent(:black), do: :white
+  ## Replay
+
+  defp states(state, []), do: [state]
+
+  defp states(state, [move | rest]) do
+    if Board.at(state.board, Move.from(move)) do
+      [state | states(Rules.apply(state, move), rest)]
+    else
+      [state]
+    end
+  end
 end
 
 # Inspect implementation for Chess.Game. When the process dictionary

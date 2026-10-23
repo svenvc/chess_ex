@@ -442,7 +442,7 @@ defmodule Chess.PGN do
 
   # The position the moves of the game are played from: the start of the
   # final game state, or the initial position when the game does not know.
-  defp game_start(%Game{game: %Chess.Game{start: start}}) when not is_nil(start), do: start
+  defp game_start(%Game{game: %Chess.Game{} = game}), do: Chess.Game.start_position(game)
   defp game_start(%Game{}), do: Chess.Game.new()
 
   # A quote inside a tag value is escaped with a backslash.
@@ -454,16 +454,20 @@ defmodule Chess.PGN do
 
   defp write_movetext(game) do
     start = game_start(game)
+    states = Chess.Game.replay(start, game.moves)
 
-    {tokens, _state} =
+    if length(states) != length(game.moves) + 1 do
+      raise ParseError, "the game holds a move that cannot be played"
+    end
+
+    tokens =
       game.moves
+      |> Enum.zip(states)
       |> Enum.with_index()
-      |> Enum.reduce({[], start}, fn {move, ply}, {tokens, state} ->
-        tokens = tokens ++ comment_tokens(game.comments, ply)
-        san = write_san(move, state)
-        tokens = tokens ++ move_number_tokens(ply, start)
-
-        {tokens ++ [san], Rules.apply(state, move)}
+      |> Enum.flat_map(fn {{move, state}, ply} ->
+        comment_tokens(game.comments, ply) ++
+          move_number_tokens(ply, start) ++
+          [write_san(move, state)]
       end)
 
     tokens = tokens ++ comment_tokens(game.comments, length(game.moves))

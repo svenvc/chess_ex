@@ -10,7 +10,7 @@ defmodule Chess.Rules do
   that is not enough to mate.
   """
 
-  alias Chess.{Board, Game, Move, Piece, Position}
+  alias Chess.{Board, Castling, Color, Game, Move, Piece, Position}
 
   import Kernel, except: [apply: 2]
 
@@ -56,7 +56,7 @@ defmodule Chess.Rules do
   def in_check?(game, color) when color in @colors do
     case Board.king(game.board, color) do
       nil -> false
-      king -> attacked?(game.board, king, opponent(color))
+      king -> attacked?(game.board, king, Color.opponent(color))
     end
   end
 
@@ -89,7 +89,7 @@ defmodule Chess.Rules do
   Return true if `move` is a well-formed and legal move for the side to move.
   """
   def legal_move?(game, move) do
-    Move.is_valid?(move) and move in legal_moves(game)
+    Move.valid?(move) and move in legal_moves(game)
   end
 
   @doc """
@@ -101,6 +101,29 @@ defmodule Chess.Rules do
   Return true if the side to move is stalemated.
   """
   def stalemate?(game), do: not in_check?(game) and legal_moves(game) == []
+
+  @doc """
+  Return the check status of the side to move:
+
+    * `:checkmate` - in check and without a legal move
+    * `:stalemate` - not in check and without a legal move
+    * `:check` - in check
+    * `:none` - not in check and with a legal move
+
+  This works out the legal moves once, so it is cheaper than asking the
+  checkmate, stalemate and check questions one after the other.
+  """
+  def check_status(game) do
+    check? = in_check?(game)
+    moves = legal_moves(game)
+
+    cond do
+      moves == [] and check? -> :checkmate
+      moves == [] -> :stalemate
+      check? -> :check
+      true -> :none
+    end
+  end
 
   ## Draws
 
@@ -123,10 +146,7 @@ defmodule Chess.Rules do
       white == [] and black == [] ->
         true
 
-      white == [] and length(black) == 1 ->
-        true
-
-      black == [] and length(white) == 1 ->
+      length(white) + length(black) == 1 ->
         true
 
       length(white) == 1 and length(black) == 1 ->
@@ -162,9 +182,8 @@ defmodule Chess.Rules do
   """
   def repetition_count(game) do
     keys =
-      game.start
-      |> start_position()
-      |> states(Enum.reverse(game.moves))
+      game
+      |> Game.replay()
       |> Enum.map(&position_key/1)
 
     current = List.last(keys)
@@ -200,7 +219,7 @@ defmodule Chess.Rules do
     %Game{
       game
       | board: new_board,
-        side_to_move: opponent(color),
+        side_to_move: Color.opponent(color),
         en_passant: en_passant,
         castling: update_castling(game.castling, board, color, move, captured),
         halfmove_clock: next_halfmove_clock(game, board, move, captured),
@@ -214,14 +233,14 @@ defmodule Chess.Rules do
   # Look for an enemy pawn one rank "behind" the square relative to its
   # direction of travel: pawns attack diagonally forward, never straight ahead.
   defp pawn_attack?(board, square, by_color) do
-    rank = Position.rank(square) - pawn_direction(by_color)
+    rank = Position.rank(square) - Piece.pawn_direction(by_color)
     file_index = Position.file_index(square)
 
     [file_index - 1, file_index + 1]
     |> Enum.any?(fn index ->
-      case position_at(index, rank) do
+      case Position.at(index, rank) do
         nil -> false
-        position -> pawn_of?(Board.at(board, position), by_color)
+        position -> piece_of?(Board.at(board, position), :pawn, by_color)
       end
     end)
   end
@@ -230,9 +249,9 @@ defmodule Chess.Rules do
   # blocking pieces.
   defp knight_attack?(board, square, by_color) do
     Enum.any?(@knight_deltas, fn {fd, rd} ->
-      case offset(square, fd, rd) do
+      case Position.offset(square, fd, rd) do
         nil -> false
-        position -> knight_of?(Board.at(board, position), by_color)
+        position -> piece_of?(Board.at(board, position), :knight, by_color)
       end
     end)
   end
@@ -240,9 +259,9 @@ defmodule Chess.Rules do
   # A king attacks all eight adjacent squares.
   defp king_attack?(board, square, by_color) do
     Enum.any?(@king_deltas, fn {fd, rd} ->
-      case offset(square, fd, rd) do
+      case Position.offset(square, fd, rd) do
         nil -> false
-        position -> king_of?(Board.at(board, position), by_color)
+        position -> piece_of?(Board.at(board, position), :king, by_color)
       end
     end)
   end
@@ -250,32 +269,32 @@ defmodule Chess.Rules do
   # Rook/queen rays cover ranks and files, bishop/queen rays cover diagonals;
   # either is enough for the square to be attacked.
   defp sliding_attack?(board, square, by_color) do
-    ray_attack?(board, square, by_color, @rook_deltas, &Piece.is_rook?/1) or
-      ray_attack?(board, square, by_color, @bishop_deltas, &Piece.is_bishop?/1)
+    ray_attack?(board, square, by_color, @rook_deltas, :rook) or
+      ray_attack?(board, square, by_color, @bishop_deltas, :bishop)
   end
 
   # True if any of the given directions contains a matching slider of by_color.
-  defp ray_attack?(board, square, by_color, deltas, piece?) do
+  defp ray_attack?(board, square, by_color, deltas, type) do
     Enum.any?(deltas, fn {fd, rd} ->
-      scan_ray(board, square, by_color, fd, rd, piece?)
+      scan_ray(board, square, by_color, fd, rd, type)
     end)
   end
 
   # Walk one ray until the board edge or the first piece. Only that first piece
   # matters: a same-colored slider or a queen attacks the square, anything else
   # (including any blocker) stops the attack.
-  defp scan_ray(board, square, by_color, fd, rd, piece?) do
-    case offset(square, fd, rd) do
+  defp scan_ray(board, square, by_color, fd, rd, type) do
+    case Position.offset(square, fd, rd) do
       nil ->
         false
 
       next ->
         case Board.at(board, next) do
           nil ->
-            scan_ray(board, next, by_color, fd, rd, piece?)
+            scan_ray(board, next, by_color, fd, rd, type)
 
           piece ->
-            of_color?(piece, by_color) and (piece?.(piece) or Piece.is_queen?(piece))
+            piece_of?(piece, type, by_color) or piece_of?(piece, :queen, by_color)
         end
     end
   end
@@ -292,14 +311,14 @@ defmodule Chess.Rules do
 
   # Dispatch to the generator for the piece type.
   defp piece_moves(game, from, piece) do
-    cond do
-      Piece.is_pawn?(piece) -> pawn_moves(game, from)
-      Piece.is_knight?(piece) -> step_moves(game, from, @knight_deltas)
-      Piece.is_bishop?(piece) -> ray_moves(game, from, @bishop_deltas)
-      Piece.is_rook?(piece) -> ray_moves(game, from, @rook_deltas)
-      Piece.is_queen?(piece) -> ray_moves(game, from, @bishop_deltas ++ @rook_deltas)
-      Piece.is_king?(piece) -> king_moves(game, from)
-      true -> []
+    case Piece.type(piece) do
+      :pawn -> pawn_moves(game, from)
+      :knight -> step_moves(game, from, @knight_deltas)
+      :bishop -> ray_moves(game, from, @bishop_deltas)
+      :rook -> ray_moves(game, from, @rook_deltas)
+      :queen -> ray_moves(game, from, @bishop_deltas ++ @rook_deltas)
+      :king -> king_moves(game, from)
+      nil -> []
     end
   end
 
@@ -307,8 +326,8 @@ defmodule Chess.Rules do
   # from its start rank) and capture diagonally, including en passant.
   defp pawn_moves(game, from) do
     color = game.side_to_move
-    direction = pawn_direction(color)
-    one = offset(from, 0, direction)
+    direction = Piece.pawn_direction(color)
+    one = Position.offset(from, 0, direction)
 
     forward =
       if one && Board.at(game.board, one) == nil do
@@ -319,7 +338,7 @@ defmodule Chess.Rules do
 
     captures =
       [-1, 1]
-      |> Enum.map(fn fd -> offset(from, fd, direction) end)
+      |> Enum.map(fn fd -> Position.offset(from, fd, direction) end)
       |> Enum.reject(&is_nil/1)
       |> Enum.flat_map(fn to -> pawn_capture(game, from, to, color) end)
 
@@ -329,8 +348,8 @@ defmodule Chess.Rules do
   # The two-square advance is only available from the pawn's start rank and
   # only when both the intermediate and destination squares are empty.
   defp double_step(game, from, color) do
-    if Position.rank(from) == start_rank(color) do
-      two = offset(from, 0, 2 * pawn_direction(color))
+    if Position.rank(from) == Piece.start_rank(color) do
+      two = Position.offset(from, 0, 2 * Piece.pawn_direction(color))
 
       if two && Board.at(game.board, two) == nil do
         [Move.new(from, two)]
@@ -354,7 +373,7 @@ defmodule Chess.Rules do
         end
 
       piece ->
-        if not Piece.is_king?(piece) and not of_color?(piece, color) do
+        if not Piece.king?(piece) and not Piece.of_color?(piece, color) do
           promotion_moves(from, to, color)
         else
           []
@@ -366,15 +385,15 @@ defmodule Chess.Rules do
   defp en_passant_capture?(game, from, to, color) do
     captured = Board.at(game.board, Position.new(Position.file(to), Position.rank(from)))
 
-    Piece.is_pawn?(captured) and not of_color?(captured, color)
+    Piece.type(captured) == :pawn and not Piece.of_color?(captured, color)
   end
 
   # A pawn move onto the last rank expands into the four promotion choices;
   # other moves stay plain `{from, to}` tuples.
   defp promotion_moves(from, to, color) do
-    if Position.rank(to) == promotion_rank(color) do
+    if Position.rank(to) == Piece.promotion_rank(color) do
       color
-      |> promotion_pieces()
+      |> Move.promotions()
       |> Enum.map(fn piece -> Move.promotion(from, to, piece) end)
     else
       [Move.new(from, to)]
@@ -384,7 +403,7 @@ defmodule Chess.Rules do
   # Single-square movers (knight, king): keep empty or enemy-occupied squares.
   defp step_moves(game, from, deltas) do
     deltas
-    |> Enum.map(fn {fd, rd} -> offset(from, fd, rd) end)
+    |> Enum.map(fn {fd, rd} -> Position.offset(from, fd, rd) end)
     |> Enum.reject(&is_nil/1)
     |> Enum.filter(fn to -> square_available?(game, to) end)
     |> Enum.map(fn to -> Move.new(from, to) end)
@@ -401,7 +420,7 @@ defmodule Chess.Rules do
   # Collect squares along one ray until the edge, an own piece (stop) or an
   # enemy piece (capture and stop). Kings are never captured.
   defp ray_moves_in_direction(game, from, current, fd, rd) do
-    case offset(current, fd, rd) do
+    case Position.offset(current, fd, rd) do
       nil ->
         []
 
@@ -411,7 +430,7 @@ defmodule Chess.Rules do
             [Move.new(from, to) | ray_moves_in_direction(game, from, to, fd, rd)]
 
           piece ->
-            if not Piece.is_king?(piece) and not of_color?(piece, game.side_to_move) do
+            if not Piece.king?(piece) and not Piece.of_color?(piece, game.side_to_move) do
               [Move.new(from, to)]
             else
               []
@@ -430,7 +449,7 @@ defmodule Chess.Rules do
   defp castling_moves(game, from) do
     color = game.side_to_move
 
-    if from == king_start(color) and not in_check?(game, color) do
+    if from == Castling.king_start(color) and not in_check?(game, color) do
       []
       |> maybe_add_castle(game, color, :king_side, from)
       |> maybe_add_castle(game, color, :queen_side, from)
@@ -444,29 +463,23 @@ defmodule Chess.Rules do
   # square. Checking `attacked?` avoids simulating the move for the transit
   # square.
   defp maybe_add_castle(moves, game, color, side, from) do
-    rank = home_rank(color)
-
-    {rook_file, empty_files, safe_files, to_file} =
-      case side do
-        :king_side -> {:h, [:f, :g], [:f, :g], :g}
-        :queen_side -> {:a, [:b, :c, :d], [:c, :d], :c}
-      end
-
-    rook = Board.at(game.board, Position.new(rook_file, rank))
-    to = Position.new(to_file, rank)
+    rook = Board.at(game.board, Castling.rook_start(color, side))
+    to = Castling.king_destination(color, side)
 
     cond do
       not MapSet.member?(game.castling, {color, side}) ->
         moves
 
-      not own_rook?(rook, color) ->
+      not piece_of?(rook, :rook, color) ->
         moves
 
-      Enum.any?(empty_files, fn file -> Board.at(game.board, Position.new(file, rank)) != nil end) ->
+      Enum.any?(Castling.empty_squares(color, side), fn square ->
+        Board.at(game.board, square) != nil
+      end) ->
         moves
 
-      Enum.any?(safe_files, fn file ->
-        attacked?(game.board, Position.new(file, rank), opponent(color))
+      Enum.any?(Castling.safe_squares(color, side), fn square ->
+        attacked?(game.board, square, Color.opponent(color))
       end) ->
         moves
 
@@ -479,7 +492,7 @@ defmodule Chess.Rules do
   defp square_available?(game, to) do
     case Board.at(game.board, to) do
       nil -> true
-      piece -> not Piece.is_king?(piece) and not of_color?(piece, game.side_to_move)
+      piece -> not Piece.king?(piece) and not Piece.of_color?(piece, game.side_to_move)
     end
   end
 
@@ -487,16 +500,23 @@ defmodule Chess.Rules do
 
   # Apply the board change for each move kind; also return the en passant
   # target created by a double pawn push (nil otherwise).
-  defp apply_board(board, {from, to}, color) do
-    {Board.move(board, from, to), double_push_target(board, from, to, color)}
+  defp apply_board(board, {from, to} = move, _color) do
+    {Board.move(board, from, to), double_push_target(board, move)}
   end
 
-  defp apply_board(board, {:castle, from, to}, _color) do
-    {castle_board(board, from, to), nil}
+  defp apply_board(board, {:castle, from, to} = move, color) do
+    side = Move.castle_side(move)
+
+    board =
+      board
+      |> Board.move(from, to)
+      |> Board.move(Castling.rook_start(color, side), Castling.rook_destination(color, side))
+
+    {board, nil}
   end
 
-  defp apply_board(board, {:en_passant, from, to}, _color) do
-    captured = Position.new(Position.file(to), Position.rank(from))
+  defp apply_board(board, {:en_passant, from, to} = move, _color) do
+    captured = Move.capture_square(move)
     board = board |> Board.remove(captured) |> Board.move(from, to)
 
     {board, nil}
@@ -508,50 +528,27 @@ defmodule Chess.Rules do
     {board, nil}
   end
 
-  # Move the king and then the rook to the other side of it. Which rook moves
-  # is implied by the king's destination file (g = king side, c = queen side).
-  defp castle_board(board, from, to) do
-    rank = Position.rank(from)
-
-    {rook_from_file, rook_to_file} =
-      case Position.file(to) do
-        :g -> {:h, :f}
-        :c -> {:a, :d}
-      end
-
-    board
-    |> Board.move(from, to)
-    |> Board.move(Position.new(rook_from_file, rank), Position.new(rook_to_file, rank))
-  end
-
   # The en passant target is the square the pawn skipped over.
-  defp double_push_target(board, from, to, _color) do
-    if Piece.is_pawn?(Board.at(board, from)) and
-         abs(Position.rank(to) - Position.rank(from)) == 2 do
-      offset(from, 0, div(Position.rank(to) - Position.rank(from), 2))
-    else
-      nil
+  defp double_push_target(board, move) do
+    if Piece.type(Board.at(board, Move.from(move))) == :pawn do
+      Move.skipped_square(move)
     end
   end
 
-  # Find the captured piece before the board changes. En passant is special
-  # because the captured pawn is beside the destination, not on it.
-  defp captured_piece(board, {_from, to}), do: Board.at(board, to)
-
-  defp captured_piece(_board, {:castle, _from, _to}), do: nil
-
-  defp captured_piece(board, {:en_passant, from, to}) do
-    Board.at(board, Position.new(Position.file(to), Position.rank(from)))
+  # Find the captured piece before the board changes.
+  defp captured_piece(board, move) do
+    case Move.capture_square(move) do
+      nil -> nil
+      square -> Board.at(board, square)
+    end
   end
-
-  defp captured_piece(board, {:promotion, _from, to, _piece}), do: Board.at(board, to)
 
   ## Draws
 
   # The pieces that are enough to mate on their own.
   defp heavy_material?(board) do
     Enum.any?(board, fn {_position, piece} ->
-      Piece.is_pawn?(piece) or Piece.is_rook?(piece) or Piece.is_queen?(piece)
+      Piece.type(piece) in [:pawn, :rook, :queen]
     end)
   end
 
@@ -561,44 +558,18 @@ defmodule Chess.Rules do
     board
     |> Board.pieces(color)
     |> Enum.filter(fn {_position, piece} ->
-      Piece.is_bishop?(piece) or Piece.is_knight?(piece)
+      Piece.type(piece) in [:bishop, :knight]
     end)
   end
 
   # Both sides hold a single bishop.
   defp both_bishops?([{_first, first_piece}], [{_second, second_piece}]) do
-    Piece.is_bishop?(first_piece) and Piece.is_bishop?(second_piece)
+    Piece.type(first_piece) == :bishop and Piece.type(second_piece) == :bishop
   end
 
   # The two bishops stand on squares of the same color.
   defp same_colour?([{first_position, _first_piece}], [{second_position, _second_piece}]) do
-    Position.is_black?(first_position) == Position.is_black?(second_position)
-  end
-
-  # The position a game started at: the one the game knows, or the initial
-  # position.
-  defp start_position(nil), do: Game.new()
-  defp start_position(start), do: start
-
-  # The states of a game, the first one first. A move that cannot be played
-  # ends the history: a game that was put together by hand has no history to
-  # speak of.
-  defp states(state, []) do
-    [state]
-  end
-
-  defp states(state, [move | rest]) do
-    if playable?(state, move) do
-      next = apply(state, move)
-      [state | states(next, rest)]
-    else
-      [state]
-    end
-  end
-
-  # The piece that is to move stands on the square the move comes from.
-  defp playable?(state, move) do
-    Board.at(state.board, move_from(move)) != nil
+    Position.same_color?(first_position, second_position)
   end
 
   # The key of a position: the board, the side to move, the castling rights
@@ -608,29 +579,13 @@ defmodule Chess.Rules do
   end
 
   # The en passant target is part of the position only when the side to move
-  # can take a pawn with it.
+  # can take a pawn with it. A pawn of that side stands beside the target, on
+  # the rank it would capture from, so this is the same question as whether the
+  # target is attacked by a pawn of the side to move.
   defp en_passant_key(game) do
-    if en_passant_capture_available?(game), do: game.en_passant, else: nil
-  end
-
-  # A pawn of the side to move stands beside the en passant target, on the
-  # rank the pawn would come from.
-  defp en_passant_capture_available?(game) do
-    case game.en_passant do
-      nil ->
-        false
-
-      target ->
-        rank = Position.rank(target) - pawn_direction(game.side_to_move)
-        file_index = Position.file_index(target)
-
-        [file_index - 1, file_index + 1]
-        |> Enum.any?(fn index ->
-          case position_at(index, rank) do
-            nil -> false
-            position -> pawn_of?(Board.at(game.board, position), game.side_to_move)
-          end
-        end)
+    if game.en_passant != nil and
+         pawn_attack?(game.board, game.en_passant, game.side_to_move) do
+      game.en_passant
     end
   end
 
@@ -639,52 +594,49 @@ defmodule Chess.Rules do
   # Drop rights for a moved king/rook and for a rook captured on its home
   # square.
   defp update_castling(castling, board, color, move, captured) do
-    from = move_from(move)
+    from = Move.from(move)
 
     castling
     |> revoke_for_moved(color, Board.at(board, from), from)
-    |> revoke_for_captured(captured, move_to(move))
+    |> revoke_for_captured(captured, Move.to(move))
   end
 
   # Losing rights when the king moves (both) or a rook leaves a home corner.
   defp revoke_for_moved(castling, _color, nil, _from), do: castling
 
   defp revoke_for_moved(castling, color, piece, from) do
-    cond do
-      Piece.is_king?(piece) ->
+    case Piece.type(piece) do
+      :king ->
         castling
         |> revoke(color, :king_side)
         |> revoke(color, :queen_side)
 
-      Piece.is_rook?(piece) and Position.rank(from) == home_rank(color) ->
-        revoke_for_rook_square(castling, color, Position.file(from))
+      :rook ->
+        revoke_for_rook_square(castling, color, from)
 
-      true ->
+      _other ->
         castling
     end
   end
 
   # Losing rights when a rook is captured on its home corner.
-  defp revoke_for_captured(castling, nil, _to), do: castling
-
-  defp revoke_for_captured(castling, piece, to) do
-    if Piece.is_rook?(piece) do
-      color = if Piece.is_white?(piece), do: :white, else: :black
-
-      if Position.rank(to) == home_rank(color) do
-        revoke_for_rook_square(castling, color, Position.file(to))
-      else
-        castling
-      end
+  defp revoke_for_captured(castling, captured, square) do
+    if Piece.type(captured) == :rook do
+      revoke_for_rook_square(castling, Piece.color(captured), square)
     else
       castling
     end
   end
 
-  # Map a rook's home file to its castling side.
-  defp revoke_for_rook_square(castling, color, :h), do: revoke(castling, color, :king_side)
-  defp revoke_for_rook_square(castling, color, :a), do: revoke(castling, color, :queen_side)
-  defp revoke_for_rook_square(castling, _color, _file), do: castling
+  # A rook's home square names its side; any other square names no side.
+  defp revoke_for_rook_square(castling, color, square) do
+    side =
+      Enum.find(Castling.sides(), fn side ->
+        Castling.rook_start(color, side) == square
+      end)
+
+    if side, do: revoke(castling, color, side), else: castling
+  end
 
   # Remove one castling right from the set.
   defp revoke(castling, color, side), do: MapSet.delete(castling, {color, side})
@@ -694,7 +646,7 @@ defmodule Chess.Rules do
   # The halfmove clock counts the plies since the last capture or the last
   # pawn move; a capture or a pawn move starts it over.
   defp next_halfmove_clock(game, board, move, captured) do
-    if captured != nil or Piece.is_pawn?(Board.at(board, move_from(move))) do
+    if captured != nil or Piece.type(Board.at(board, Move.from(move))) == :pawn do
       0
     else
       game.halfmove_clock + 1
@@ -708,73 +660,8 @@ defmodule Chess.Rules do
 
   ## Helpers
 
-  # The origin square of any move shape.
-  defp move_from({from, _to}), do: from
-  defp move_from({_kind, from, _to}), do: from
-  defp move_from({:promotion, from, _to, _piece}), do: from
-
-  # The destination square of any move shape.
-  defp move_to({_from, to}), do: to
-  defp move_to({_kind, _from, to}), do: to
-  defp move_to({:promotion, _from, to, _piece}), do: to
-
-  # Build a position from 1-based file/rank indexes, or nil when off-board.
-  defp position_at(file_index, rank)
-       when file_index in 1..8 and rank in 1..8 do
-    Position.new(file_index, rank)
+  # Piece is of the given type and color (nil is neither).
+  defp piece_of?(piece, type, color) do
+    Piece.type(piece) == type and Piece.of_color?(piece, color)
   end
-
-  defp position_at(_file_index, _rank), do: nil
-
-  # Move a position by a file/rank delta, or nil when it leaves the board.
-  defp offset(position, file_delta, rank_delta) do
-    position_at(
-      Position.file_index(position) + file_delta,
-      Position.rank(position) + rank_delta
-    )
-  end
-
-  # The other color.
-  defp opponent(:white), do: :black
-  defp opponent(:black), do: :white
-
-  # White pawns advance towards rank 8, black pawns towards rank 1.
-  defp pawn_direction(:white), do: 1
-  defp pawn_direction(:black), do: -1
-
-  # Rank on which pawns may make their initial two-square advance.
-  defp start_rank(:white), do: 2
-  defp start_rank(:black), do: 7
-
-  # Last rank for each color.
-  defp promotion_rank(:white), do: 8
-  defp promotion_rank(:black), do: 1
-
-  # Back rank for each color (kings, rooks, castling).
-  defp home_rank(:white), do: 1
-  defp home_rank(:black), do: 8
-
-  # King's initial square, the only square castling may start from.
-  defp king_start(:white), do: :e1
-  defp king_start(:black), do: :e8
-
-  # Promotion choices, using the case that matches the color's pieces.
-  defp promotion_pieces(:white), do: [:Q, :R, :B, :N]
-  defp promotion_pieces(:black), do: [:q, :r, :b, :n]
-
-  # Color checks for pieces (nil is neither).
-  defp of_color?(piece, :white), do: Piece.is_white?(piece)
-  defp of_color?(piece, :black), do: Piece.is_black?(piece)
-
-  # Piece is a pawn of the given color.
-  defp pawn_of?(piece, color), do: Piece.is_pawn?(piece) and of_color?(piece, color)
-
-  # Piece is a knight of the given color.
-  defp knight_of?(piece, color), do: Piece.is_knight?(piece) and of_color?(piece, color)
-
-  # Piece is a king of the given color.
-  defp king_of?(piece, color), do: Piece.is_king?(piece) and of_color?(piece, color)
-
-  # Piece is a rook of the given color.
-  defp own_rook?(piece, color), do: Piece.is_rook?(piece) and of_color?(piece, color)
 end

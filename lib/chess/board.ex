@@ -53,10 +53,10 @@ defmodule Chess.Board do
   Return the `{position, piece}` entries of the given color (`:white` or `:black`).
   """
   def pieces(board, :white),
-    do: Enum.filter(board, fn {_position, piece} -> Piece.is_white?(piece) end)
+    do: Enum.filter(board, fn {_position, piece} -> Piece.white?(piece) end)
 
   def pieces(board, :black),
-    do: Enum.filter(board, fn {_position, piece} -> Piece.is_black?(piece) end)
+    do: Enum.filter(board, fn {_position, piece} -> Piece.black?(piece) end)
 
   @doc """
   Return the position of the king of the given color,
@@ -64,7 +64,7 @@ defmodule Chess.Board do
   """
   def king(board, color) do
     Enum.find_value(board, fn {position, piece} ->
-      if is_piece_of?(piece, color) and Piece.is_king?(piece), do: position
+      if Piece.type(piece) == :king and Piece.color(piece) == color, do: position
     end)
   end
 
@@ -96,19 +96,28 @@ defmodule Chess.Board do
     |> Map.put(to, piece)
   end
 
-  defp is_piece_of?(piece, :white), do: Piece.is_white?(piece)
-  defp is_piece_of?(piece, :black), do: Piece.is_black?(piece)
-
-  def to_ascii(board) do
+  @doc """
+  Return the board as eight rows of `{position, piece}` entries, from the
+  eighth rank down to the first. Empty squares are part of a row, with `nil`
+  for the piece.
+  """
+  def rows(board) do
     8..1//-1
     |> Enum.map(fn rank ->
       1..8
       |> Enum.map(fn file_index ->
-        to_string(board |> at(Position.new(file_index, rank)) || ".")
+        position = Position.new(file_index, rank)
+        {position, at(board, position)}
       end)
-      |> Enum.join(" ")
     end)
-    |> Enum.join("\n")
+  end
+
+  def to_ascii(board) do
+    board
+    |> rows()
+    |> Enum.map_join("\n", fn row ->
+      Enum.map_join(row, " ", fn {_position, piece} -> to_string(piece || ".") end)
+    end)
   end
 
   def print(board), do: IO.puts(to_ascii(board))

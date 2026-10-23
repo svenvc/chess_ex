@@ -298,6 +298,13 @@ defmodule Chess.RulesTest do
       assert Rules.stalemate?(game)
       refute Rules.checkmate?(game)
     end
+
+    test "check_status/1 names the state of the side to move" do
+      assert Rules.check_status(Game.new()) == :none
+      assert Rules.check_status(game(%{a8: :k, c7: :K, b7: :Q}, :black)) == :checkmate
+      assert Rules.check_status(game(%{a8: :k, c7: :K, b6: :Q}, :black)) == :stalemate
+      assert Rules.check_status(game(%{e1: :K, e8: :k, e2: :r})) == :check
+    end
   end
 
   describe "draws" do
@@ -466,7 +473,7 @@ defmodule Chess.RulesTest do
 
   # Play the moves of a game and check the state of the game after every ply.
   defp replay(pgn) do
-    start = pgn.game.start || Game.new()
+    start = Game.start_position(pgn.game)
 
     Enum.reduce(Enum.with_index(pgn.moves, 1), start, fn {move, ply}, game ->
       context = "ply #{ply}: #{inspect(move)}"
@@ -567,7 +574,7 @@ defmodule Chess.RulesTest do
     color = game.side_to_move
     from = move_from(move)
     to = move_to(move)
-    king_moved = Piece.is_king?(Board.at(board, from))
+    king_moved = Piece.king?(Board.at(board, from))
 
     for side_color <- [:white, :black],
         side <- [:king_side, :queen_side],
@@ -660,7 +667,7 @@ defmodule Chess.RulesTest do
   defp rook_of(:black), do: :r
 
   defp color_of(piece) do
-    if Piece.is_white?(piece), do: :white, else: :black
+    if Piece.white?(piece), do: :white, else: :black
   end
 
   defp opponent(:white), do: :black

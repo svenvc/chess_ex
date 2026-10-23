@@ -105,6 +105,15 @@ defmodule Chess.Evaluation do
     {20, 30, 10, 0, 0, 10, 30, 20}
   }
 
+  @tables %{
+    pawn: @pawn_table,
+    knight: @knight_table,
+    bishop: @bishop_table,
+    rook: @rook_table,
+    queen: @queen_table,
+    king: @king_table
+  }
+
   @doc """
   Evaluate the position and return the score in centipawns, from White's
   point of view.
@@ -178,32 +187,14 @@ defmodule Chess.Evaluation do
   # rotated by 180 degrees before the lookup, so that both colors read the
   # tables from White's point of view.
   defp square_value(piece, position) do
-    file_index = Position.file_index(position)
-    rank = Position.rank(position)
-
-    {file_index, rank} =
-      if Piece.is_white?(piece) do
-        {file_index, rank}
-      else
-        {9 - file_index, 9 - rank}
-      end
-
+    position = if Piece.white?(piece), do: position, else: Position.rotate(position)
     table = table_for(piece)
 
-    elem(elem(table, 8 - rank), file_index - 1)
+    elem(elem(table, 8 - Position.rank(position)), Position.file_index(position) - 1)
   end
 
   # The piece-square table of a piece type.
-  defp table_for(piece) do
-    cond do
-      Piece.is_pawn?(piece) -> @pawn_table
-      Piece.is_knight?(piece) -> @knight_table
-      Piece.is_bishop?(piece) -> @bishop_table
-      Piece.is_rook?(piece) -> @rook_table
-      Piece.is_queen?(piece) -> @queen_table
-      Piece.is_king?(piece) -> @king_table
-    end
-  end
+  defp table_for(piece), do: Map.fetch!(@tables, Piece.type(piece))
 
   ## Helpers
 

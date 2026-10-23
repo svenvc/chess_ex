@@ -23,6 +23,61 @@ defmodule Chess.GameTest do
              ])
   end
 
+  test "start_position/1 returns the initial position until the game knows better" do
+    game = Game.new()
+    assert Game.start_position(game) == game
+
+    game = Rules.apply(game, {:e2, :e4})
+    assert Game.start_position(game) == Game.new()
+
+    start = %{Game.new() | board: %{e1: :K, e8: :k}, castling: MapSet.new()}
+    game = %{start | start: start, moves: [{:e1, :e2}]}
+
+    assert Game.start_position(game) == start
+  end
+
+  test "moves_in_order/1 turns the history around" do
+    moves = [{:e2, :e4}, {:e7, :e5}, {:g1, :f3}]
+    game = play(moves)
+
+    assert Game.moves_in_order(game) == moves
+  end
+
+  test "replay/1 returns the positions a game went through" do
+    moves = [{:e2, :e4}, {:e7, :e5}, {:g1, :f3}]
+    game = play(moves)
+
+    states = Game.replay(game)
+
+    assert length(states) == 4
+    assert hd(states) == Game.new()
+    assert List.last(states) == game
+    assert Enum.map(states, & &1.side_to_move) == [:white, :black, :white, :black]
+    assert Enum.map(states, &length(&1.moves)) == [0, 1, 2, 3]
+  end
+
+  test "replay/2 plays a list of moves from a position" do
+    moves = [{:e2, :e4}, {:e7, :e5}]
+
+    states = Game.replay(Game.new(), moves)
+
+    assert length(states) == 3
+    assert hd(states) == Game.new()
+    assert List.last(states) == play(moves)
+  end
+
+  test "replay/1 ends a history that cannot be played" do
+    game = %{Game.new() | moves: [{:e4, :e5}]}
+
+    assert Game.replay(game) == [Game.new()]
+  end
+
+  test "replay/1 of a position without moves is the position itself" do
+    game = %{Game.new() | board: %{e1: :K, e8: :k}, side_to_move: :black}
+
+    assert Game.replay(game) == [game]
+  end
+
   describe "status/1" do
     test "a game that has just begun is ongoing" do
       game = Game.new()

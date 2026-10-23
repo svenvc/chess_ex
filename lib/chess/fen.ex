@@ -30,19 +30,10 @@ defmodule Chess.FEN do
   this one.
   """
 
-  alias Chess.{Board, Game, Position}
+  alias Chess.{Board, Castling, Game, Position}
   alias Chess.FEN.ParseError
 
   @piece_chars ~c"PNBRQKpnbrqk"
-
-  @rights [
-    {"K", {:white, :king_side}},
-    {"Q", {:white, :queen_side}},
-    {"k", {:black, :king_side}},
-    {"q", {:black, :queen_side}}
-  ]
-
-  @rights_by_letter Map.new(@rights)
 
   @doc """
   Read a FEN record and return the game it describes.
@@ -174,9 +165,9 @@ defmodule Chess.FEN do
     field
     |> String.graphemes()
     |> Enum.map(fn letter ->
-      case Map.fetch(@rights_by_letter, letter) do
-        {:ok, right} -> right
-        :error -> raise ParseError, "unknown castling right #{inspect(letter)}"
+      case Castling.right_for_letter(letter) do
+        nil -> raise ParseError, "unknown castling right #{inspect(letter)}"
+        right -> right
       end
     end)
     |> MapSet.new()
@@ -219,15 +210,11 @@ defmodule Chess.FEN do
   # The board, rank by rank from the eighth rank down to the first, with the
   # empty squares of a rank written as a number.
   defp board_field(board) do
-    8..1//-1
-    |> Enum.map_join("/", fn rank ->
-      1..8
-      |> Enum.map(fn file_index ->
-        case Board.at(board, Position.new(file_index, rank)) do
-          nil -> "."
-          piece -> to_string(piece)
-        end
-      end)
+    board
+    |> Board.rows()
+    |> Enum.map_join("/", fn row ->
+      row
+      |> Enum.map(fn {_position, piece} -> if piece, do: to_string(piece), else: "." end)
       |> collapse()
     end)
   end
@@ -252,7 +239,7 @@ defmodule Chess.FEN do
   # The castling rights, always in the order KQkq.
   defp castling_field(castling) do
     letters =
-      @rights
+      Castling.fen_letters()
       |> Enum.filter(fn {_letter, right} -> MapSet.member?(castling, right) end)
       |> Enum.map_join("", fn {letter, _right} -> letter end)
 

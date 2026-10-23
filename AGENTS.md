@@ -18,20 +18,31 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
 - **Position** = atom from a fixed set of 64, e.g. `:a1` (`lib/chess/position.ex`).
   Never a tuple or string. `from_string/1` guards on `<<letter, digit>>` and
   raises `FunctionClauseError` on invalid input — errors-as-crashes is the
-  established style; there are no `{:error, _}` returns anywhere.
+  established style; there are no `{:error, _}` returns anywhere. `at/2`,
+  `offset/3` and `rotate/1` keep board arithmetic off the caller.
 - **Piece** = atom; **uppercase = white** (`:K :Q :R :B :N :P`), lowercase =
-  black (`:k :q :r :b :n :p`). Knight is `:N`.
+  black (`:k :q :r :b :n :p`). Knight is `:N`. `Piece.type/1` and
+  `Piece.color/1` name the two facets; `Piece.of_color?/2` compares a color.
+  `Piece.pawn_direction/1`, `start_rank/1` and `promotion_rank/1` are the
+  color-dependent rank facts of a pawn.
+- **Color** = `:white` or `:black`; `Chess.Color.opponent/1` is the other one.
+- **Castling** = `Chess.Castling`, which names the rights (`{color, side}`),
+  the king and rook squares, the empty and safe paths, and the FEN letters.
 - **Board** = map of `position => piece`, only occupied squares
   (32 entries for `Board.initial/0`). Always read squares via `Board.at/2`; it
   accepts a map or a keyword list of `{position, piece}` tuples. Don't access
-  the container directly from new code.
+  the container directly from new code. `Board.rows/1` is the rank-by-rank
+  view that `to_ascii/1` and FEN writing share.
 - `Chess.Move` — tagged-tuple value type, syntax-only validation via
-  `Move.is_valid?/1`: `{from, to}` normal (incl. captures),
+  `Move.valid?/1`: `{from, to}` normal (incl. captures),
   `{:castle, from, to}` (king squares), `{:en_passant, from, to}`,
   `{:promotion, from, to, piece}`. Constructors: `new/2`, `castle/2`,
-  `en_passant/2`, `promotion/3`.
+  `en_passant/2`, `promotion/3`. Shape helpers: `from/1`, `to/1`,
+  `promotion_piece/1`, `capture_square/1`, `castle_side/1`,
+  `skipped_square/1`, `promotions/1`.
 - `Chess.Rules` — `attacked?/3`, `in_check?/1,2`, `pseudo_legal_moves/1`,
-  `legal_moves/1`, `legal_move?/2`, `apply/2`, `checkmate?/1`, `stalemate?/1`.
+  `legal_moves/1`, `legal_move?/2`, `apply/2`, `checkmate?/1`, `stalemate?/1`,
+  `check_status/1`.
   The draw rules live here too: `insufficient_material?/1`,
   `fifty_move_rule?/1`, `seventy_five_move_rule?/1`, `repetition_count/1`,
   `threefold_repetition?/1`, `fivefold_repetition?/1`.
@@ -44,6 +55,8 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   that the moves of a game can be played back from there. Castling rights, the
   en passant target and the two counters live here because they **cannot**
   be derived from the board alone. Generation/applying go through `Chess.Rules`.
+  `Game.start_position/1`, `Game.moves_in_order/1` and `Game.replay/1,2` are
+  the shared way to work the history again.
   `Game.status/1` names how the game stands (`:ongoing`, `:checkmate`,
   `:stalemate` or one of the draws), `Game.over?/1` and `Game.winner/1` answer
   the two questions that follow from it.
@@ -102,22 +115,23 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
 
 ## Conventions that differ from defaults
 
-- `Chess.Position.file/1`, `rank/1`, `file_index/1`, `is_black?/1`,
-  `is_white?/1` are **hand-expanded exhaustive guard clauses**, not computed
+- `Chess.Position.file/1`, `rank/1`, `file_index/1`, `dark?/1`,
+  `light?/1` are **hand-expanded exhaustive guard clauses**, not computed
   arithmetic. Match that style when extending (compile-time constants, no
   fallback clauses for known inputs).
-- `Position.is_black?/1` and `is_white?/1` mean **square color**, not piece
-  color. Piece color uses `Piece.is_black?/1` / `Piece.is_white?/1`.
+- `Position.dark?/1` and `Position.light?/1` mean **square color**, not piece
+  color. Piece color uses `Piece.black?/1` / `Piece.white?/1`.
 - `String.to_atom/1` on the 64 bounded squares is fine; be careful if reusing
   that pattern for arbitrary future PGN/FEN input.
 - A **position** of a game (the thing the repetition rules count) is the board,
   the side to move, the castling rights and the en passant target; the
   halfmove clock and the number of the move are not part of it. The en passant
   target only counts when the side to move can really take a pawn with it.
-- The repetition rules work the moves of a game again instead of keeping a
-  history of positions around; `Rules.apply/2` stays free of them, so perft
-  is not slowed down by them. A game that does not start from the initial
-  position has to know where its moves begin: that is what `Game.start` is for.
+- The repetition rules work the moves of a game again through
+  `Game.replay/1` instead of keeping a history of positions around;
+  `Rules.apply/2` stays free of them, so perft is not slowed down by them. A
+  game that does not start from the initial position has to know where its
+  moves begin: that is what `Game.start` is for.
 - Text that comes from a file is handled **byte by byte** (`IO.iodata_to_binary/1`,
   `List.to_string/1` is *not* the same thing): a tag value like `Łódź` has to
   survive the round trip. `Enum.join/1` on a list of char codes turns them

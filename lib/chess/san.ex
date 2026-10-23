@@ -13,7 +13,7 @@ defmodule Chess.SAN do
   legal moves of the position, so a token always describes exactly one move.
   """
 
-  alias Chess.{Board, Move, Piece, Position, Rules}
+  alias Chess.{Board, Castling, Move, Position, Rules}
   alias Chess.SAN.ParseError
 
   @piece_letters ~w(K Q R B N)
@@ -51,11 +51,13 @@ defmodule Chess.SAN do
   when the move is not legal in that position.
   """
   def to_san(move, game) do
-    unless Move.is_valid?(move) and move in Rules.legal_moves(game) do
+    unless Rules.legal_move?(game, move) do
       raise ParseError, "#{inspect(move)} is not a legal move in this position"
     end
 
-    {from, to, promotion} = shape(move)
+    from = Move.from(move)
+    to = Move.to(move)
+    promotion = Move.promotion_piece(move)
     piece = Board.at(game.board, from)
 
     san_body(game, move, from, to, promotion, piece) <> marker(move, game)
@@ -226,7 +228,8 @@ defmodule Chess.SAN do
   end
 
   defp matches?(game, move, description) do
-    {from, to, promotion} = shape(move)
+    from = Move.from(move)
+    to = Move.to(move)
     piece = piece_letter(Board.at(game.board, from))
 
     to == description.to and
@@ -234,7 +237,7 @@ defmodule Chess.SAN do
       file_matches?(from, description.from_file) and
       rank_matches?(from, description.from_rank) and
       capture?(game, move) == description.capture? and
-      promotion_matches?(promotion, description.promotion)
+      promotion_matches?(Move.promotion_piece(move), description.promotion)
   end
 
   # A token without a piece letter is a pawn move; every other piece is named.
@@ -249,15 +252,16 @@ defmodule Chess.SAN do
   defp rank_matches?(from, rank), do: Position.rank(from) == rank
 
   defp promotion_matches?(nil, nil), do: true
-  defp promotion_matches?(promotion, promotion), do: true
-  defp promotion_matches?(_promotion, _expected), do: false
+  defp promotion_matches?(piece, expected), do: to_string(piece) == expected
 
   # Castling is written without a destination square: the king lands on the
   # side the rook stands on.
   defp find_castle(game, side, token) do
+    destination = Castling.king_destination(game.side_to_move, side)
+
     candidates =
       Enum.filter(Rules.legal_moves(game), fn
-        {:castle, _from, to} -> to == castle_destination(side, game.side_to_move)
+        {:castle, _from, to} -> to == destination
         _other -> false
       end)
 
@@ -272,11 +276,6 @@ defmodule Chess.SAN do
         raise ParseError, "#{inspect(token)} matches #{length(many)} legal moves"
     end
   end
-
-  defp castle_destination(:king_side, :white), do: :g1
-  defp castle_destination(:king_side, :black), do: :g8
-  defp castle_destination(:queen_side, :white), do: :c1
-  defp castle_destination(:queen_side, :black), do: :c8
 
   # The marker has to agree with the position the move leads to.
   defp validate_marker!(move, marker, game, token) do
@@ -294,12 +293,12 @@ defmodule Chess.SAN do
   # destination and the promotion.
   defp san_body(game, move, from, to, promotion, piece) do
     case move do
-      {:castle, _from, destination} ->
-        if destination in [:g1, :g8], do: "O-O", else: "O-O-O"
+      {:castle, _from, _to} = castle ->
+        if Move.castle_side(castle) == :king_side, do: "O-O", else: "O-O-O"
 
       _other ->
         destination = to_string(to)
-        promotion = if promotion, do: "=" <> promotion, else: ""
+        promotion = if promotion, do: "=" <> to_string(promotion), else: ""
 
         case piece_letter(piece) do
           "P" ->
@@ -342,11 +341,9 @@ defmodule Chess.SAN do
     Rules.legal_moves(game)
     |> Enum.reject(&(&1 == move))
     |> Enum.filter(fn candidate ->
-      {from, candidate_to, _promotion} = shape(candidate)
-
-      candidate_to == to and Board.at(game.board, from) == piece
+      Move.to(candidate) == to and Board.at(game.board, Move.from(candidate)) == piece
     end)
-    |> Enum.map(fn candidate -> elem(shape(candidate), 0) end)
+    |> Enum.map(&Move.from/1)
   end
 
   defp file_letter(index), do: <<?a + index - 1>>
@@ -354,16 +351,12 @@ defmodule Chess.SAN do
   defp capture_marker(true), do: "x"
   defp capture_marker(false), do: ""
 
-  # A capture takes the piece on the destination square, except for en
-  # passant, where the pawn stands beside it.
+  # A capture leaves a piece on the square the move takes on: the destination,
+  # or the square beside the destination for en passant.
   defp capture?(game, move) do
-    case move do
-      {:en_passant, _from, _to} ->
-        true
-
-      _other ->
-        {_from, to, _promotion} = shape(move)
-        not is_nil(Board.at(game.board, to))
+    case Move.capture_square(move) do
+      nil -> false
+      square -> Board.at(game.board, square) != nil
     end
   end
 
@@ -379,31 +372,15 @@ defmodule Chess.SAN do
   defp marker_kind(move, game) do
     after_move = Rules.apply(game, move)
 
-    cond do
-      Rules.checkmate?(after_move) -> :mate
-      Rules.in_check?(after_move) -> :check
-      true -> :none
+    case Rules.check_status(after_move) do
+      :checkmate -> :mate
+      :check -> :check
+      _other -> :none
     end
   end
 
   ## Helpers
 
-  # The origin, the destination and the promotion piece of any move shape.
-  defp shape({from, to}), do: {from, to, nil}
-  defp shape({:castle, from, to}), do: {from, to, nil}
-  defp shape({:en_passant, from, to}), do: {from, to, nil}
-  defp shape({:promotion, from, to, piece}), do: {from, to, to_string(piece)}
-
   # The letter a piece is written with; white and black use the same letter.
-  defp piece_letter(piece) do
-    cond do
-      Piece.is_king?(piece) -> "K"
-      Piece.is_queen?(piece) -> "Q"
-      Piece.is_rook?(piece) -> "R"
-      Piece.is_bishop?(piece) -> "B"
-      Piece.is_knight?(piece) -> "N"
-      Piece.is_pawn?(piece) -> "P"
-      true -> nil
-    end
-  end
+  defp piece_letter(piece), do: piece |> to_string() |> String.upcase()
 end
