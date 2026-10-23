@@ -114,4 +114,30 @@ defmodule Chess.EngineTest do
       assert applied.board[:d5] == nil or applied.board[:d5] != :Q
     end
   end
+
+  describe "search_move/2" do
+    test "returns a legal move" do
+      game = Game.new()
+
+      assert {:ok, move} = Engine.search_move(game, depth: 2)
+      assert move in Rules.legal_moves(game)
+    end
+
+    test "returns an error for a terminal position" do
+      game = %Game{board: %{a8: :k, c7: :K, b6: :Q}, side_to_move: :black}
+
+      assert {:error, :stalemate} = Engine.search_move(game)
+    end
+  end
+
+  describe "play/2 with the :search strategy" do
+    test "plays a move found by the search" do
+      game = Game.new()
+
+      assert {:ok, new_game, move} = Engine.play(game, strategy: :search, depth: 2)
+      assert move in Rules.legal_moves(game)
+      assert new_game.side_to_move == :black
+      assert length(new_game.moves) == 1
+    end
+  end
 end

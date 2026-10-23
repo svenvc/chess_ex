@@ -86,6 +86,15 @@ defmodule Chess.EvaluationTest do
     end
   end
 
+  describe "piece_value/1" do
+    test "returns the material value in centipawns" do
+      assert Evaluation.piece_value(:P) == 100
+      assert Evaluation.piece_value(:N) == 320
+      assert Evaluation.piece_value(:q) == 900
+      assert Evaluation.piece_value(:k) == 0
+    end
+  end
+
   # Rotate the board by 180 degrees and swap the colors of all pieces.
   defp mirror(board) do
     Map.new(board, fn {position, piece} ->

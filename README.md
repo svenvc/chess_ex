@@ -187,9 +187,26 @@ iex> Chess.Engine.best_move(game)
 ```
 
 `Chess.Engine.play/2` applies the move and returns `{:ok, game, move}`. It uses
-1-ply evaluation by default (`:best` strategy) and can also pick a
-`:random` move. When the game is over, it returns `{:error, reason}` with the
-game status.
+1-ply evaluation by default (`:best` strategy) and can also pick a `:random`
+move. When the game is over, it returns `{:error, reason}` with the game
+status.
+
+The `:search` strategy plays a move found by a depth-limited search:
+
+```elixir
+game = Chess.Game.new()
+{:ok, game, move} = Chess.Engine.play(game, strategy: :search, depth: 3)
+{:ok, reply} = Chess.Engine.search_move(game, depth: 2, randomize: false)
+```
+
+`depth` counts plies (half-moves), so `depth: 3` looks at a move, the reply
+and one more move; the default is `3`. `Chess.Search` explains the search:
+it uses **negamax** (minimax with a single side-to-move score and a sign flip
+per move) with **alpha-beta pruning**, which skips lines that cannot change
+the result. Captures are ordered first by **MVV-LVA** (Most Valuable Victim,
+Least Valuable Attacker). Material and piece-square tables from
+`Chess.Evaluation` score quiet positions. There is no opening book and no
+endgame tablebase; deeper searches are stronger but slower.
 
 ## references
 

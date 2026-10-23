@@ -54,8 +54,41 @@ Ordered roughly by dependency.
   king safety can be added later.
 - [x] Basic engine: `Chess.Engine` selects moves with random or 1-ply
   evaluation-based strategies and plays them via `play/2`.
-- [ ] Search: depth-limited search on top of the evaluation.
+- [x] Search: `Chess.Search` is a depth-limited negamax search with alpha-beta
+  pruning on top of the evaluation, exposed as the `:search` engine strategy
+  (`depth` in plies, default 3). No opening book or endgame tablebase.
 - [ ] UCI interface.
+
+## Search notes
+
+- `Chess.Search.best_move/2` searches `depth` plies (`depth: 3` = move, reply,
+  move). The root searches every legal move with a full window so that ties
+  can be randomised exactly; the child nodes use alpha-beta.
+- Gotcha: never call `Game.over?/1` or `Game.status/1` inside the search tree.
+  Both replay the whole game for the repetition rules, which would dominate
+  the runtime. Use `Rules.in_check?/1`, `Rules.legal_moves/1` and
+  `Rules.fifty_move_rule?/1` locally instead.
+- Gotcha: repetition draws are not detected inside the tree; only the
+  fifty-move rule and insufficient material are. The normal game rules still
+  apply once the chosen move is played.
+- Gotcha: a checkmate exactly at the horizon is found because a leaf in check
+  generates its moves, but a *stalemate* at the horizon is scored statically.
+  This is a deliberate trade-off to avoid move generation at every leaf.
+- Gotcha: `Move.capture_square/1` returns `nil` for castling; the MVV-LVA
+  ordering handles that as a quiet move.
+- Measured from the initial position with `randomize: false` on the
+  development machine: depth 1 <10 ms, depth 2 ~10 ms, depth 3 ~0.1 s,
+  depth 4 ~1.7 s. The suite keeps search tests at depth 1-2.
+- Future work, in rough order of value:
+  - capture-only quiescence search (the biggest strength gain for the lines)
+  - transposition table / position keys
+  - iterative deepening with a time limit
+  - killer/history heuristics and a root alpha window (or principal
+    variation search, PVS)
+  - board-only legality, precomputed neighbour/ray tables, king tracking
+    (see the performance notes below)
+  - UCI interface
+- Opening books and endgame tablebases are out of scope by design.
 
 ## Tests & docs
 

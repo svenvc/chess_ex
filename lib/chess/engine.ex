@@ -2,11 +2,17 @@ defmodule Chess.Engine do
   @moduledoc """
   Automatic move generation for a `Chess.Game`.
 
-  Provides simple strategies for selecting and playing moves:
-  random selection, or 1-ply evaluation-based selection.
+  Three strategies are available:
+
+    * `:random` — a uniformly random legal move
+    * `:best` — the move with the best static evaluation after one ply
+    * `:search` — a depth-limited search with alpha-beta pruning, delegated to `Chess.Search`
+
+  The `:search` strategy accepts a `:depth` option in plies (half-moves),
+  defaulting to `3`. See `Chess.Search` for the search itself.
   """
 
-  alias Chess.{Evaluation, Game, Rules}
+  alias Chess.{Evaluation, Game, Rules, Search}
 
   @doc """
   Play a move in the game using the given strategy.
@@ -65,8 +71,30 @@ defmodule Chess.Engine do
     end
   end
 
+  @doc """
+  Return the best legal move for the side to move found by a depth-limited
+  alpha-beta search.
+
+  The search accepts the options of `Chess.Search.best_move/2`:
+  `:depth` (in plies, default `3`) and `:randomize` (default `true`).
+
+  Returns `{:error, reason}` if the game is over or has no legal moves.
+  """
+  def search_move(game, opts \\ []) do
+    play(game, Keyword.merge(opts, strategy: :search))
+    |> case do
+      {:ok, _game, move} -> {:ok, move}
+      other -> other
+    end
+  end
+
   defp select_move(_game, moves, :random, _opts) do
     Enum.random(moves)
+  end
+
+  defp select_move(game, _moves, :search, opts) do
+    {:ok, move, _score} = Search.best_move(game, opts)
+    move
   end
 
   defp select_move(game, moves, :best, opts) do

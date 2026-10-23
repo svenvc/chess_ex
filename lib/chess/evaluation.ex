@@ -12,6 +12,8 @@ defmodule Chess.Evaluation do
 
   Adding a term (mobility, pawn structure, king safety, ...) means adding a
   function and a key to the breakdown map; `evaluate/1` sums the map's values.
+  The material value of a single piece is exposed through `piece_value/1`,
+  which the search also uses to order captures.
   """
 
   alias Chess.{Board, Game, Piece, Position}
@@ -135,6 +137,14 @@ defmodule Chess.Evaluation do
   def evaluate(game, :black), do: -evaluate(game)
 
   @doc """
+  Return the material value of a piece in centipawns.
+
+  The king is worth `0`: a won game is a matter for search, not for a static
+  score. The values are the ones `breakdown/1` uses for its `:material` term.
+  """
+  def piece_value(piece), do: Map.fetch!(@material_values, piece)
+
+  @doc """
   Return the terms of the evaluation, from White's point of view.
 
   The values add up to the result of `evaluate/1`.
@@ -181,7 +191,7 @@ defmodule Chess.Evaluation do
   ## Lookups
 
   # The material value of a piece, in centipawns.
-  defp value(piece), do: Map.fetch!(@material_values, piece)
+  defp value(piece), do: piece_value(piece)
 
   # The piece-square table value of a piece on a square. Black's square is
   # rotated by 180 degrees before the lookup, so that both colors read the

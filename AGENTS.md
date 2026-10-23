@@ -62,14 +62,24 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   the two questions that follow from it.
 - `Chess.Engine` — move selection/play: `play/2` applies a chosen move and
   returns `{:ok, game, move}` or `{:error, status}` when terminal; strategies
-  `:best` (1-ply via `Evaluation.evaluate/1`, random among ties by default) and
-  `:random` (uniform from `Rules.legal_moves/1`). `random_move/1`,
-  `best_move/1,2` return `{:ok, move}` or `{:error, status}`.
+  `:best` (1-ply via `Evaluation.evaluate/1`, random among ties by default),
+  `:random` (uniform from `Rules.legal_moves/1`) and `:search` (delegates to
+  `Chess.Search`, takes `:depth` in plies, default 3). `random_move/1`,
+  `best_move/1,2` and `search_move/1,2` return `{:ok, move}` or
+  `{:error, status}`.
+- `Chess.Search` — depth-limited search for the best move: negamax (one
+  sign-flipping minimax instead of separate max/min functions) with
+  alpha-beta pruning, MVV-LVA capture ordering (Most Valuable Victim, Least
+  Valuable Attacker) and mate scores that prefer faster mates. Returns
+  `{:ok, move, score}` in centipawns from the side to move. No opening book,
+  no endgame tablebase, no transposition table.
 - `Chess.Evaluation` — static score in centipawns, White-relative (positive =
   White is better): `evaluate/1` (a game or a bare board), `evaluate/2` (score
   from `:white`/`:black`), `breakdown/1` (map of terms: `:material`,
-  `:positional`). `evaluate/1` sums the breakdown, so new terms (mobility,
-  pawn structure, king safety) are added by adding a key and a function.
+  `:positional`), `piece_value/1` (the material value of one piece, also used
+  by the search's move ordering). `evaluate/1` sums the breakdown, so new
+  terms (mobility, pawn structure, king safety) are added by adding a key and
+  a function.
 - `Chess.SAN` — algebraic notation. `parse/2` turns a token into a
   `Chess.Move`, `to_san/2` turns a `Chess.Move` back into a token. Both
   resolve against `Rules.legal_moves/1`, so a token always names exactly one
