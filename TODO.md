@@ -57,7 +57,11 @@ Ordered roughly by dependency.
 - [x] Search: `Chess.Search` is a depth-limited negamax search with alpha-beta
   pruning on top of the evaluation, exposed as the `:search` engine strategy
   (`depth` in plies, default 3). No opening book or endgame tablebase.
-- [ ] UCI interface.
+- [x] UCI interface: `Chess.UCI` translates the core commands and
+  `Chess.UCI.CLI` is the escript entry point (`mix escript.build`). It speaks
+  UCI on stdin/stdout, searches asynchronously so that `stop` and `isready`
+  work, and supports `depth`, `movetime` and the clock options. No strength
+  options are advertised.
 
 ## Search notes
 
@@ -87,7 +91,6 @@ Ordered roughly by dependency.
     variation search, PVS)
   - board-only legality, precomputed neighbour/ray tables, king tracking
     (see the performance notes below)
-  - UCI interface
 - Opening books and endgame tablebases are out of scope by design.
 
 ## Tests & docs

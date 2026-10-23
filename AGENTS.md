@@ -8,6 +8,7 @@ Single package, **zero dependencies**, no `config/`, no lockfile.
 - `mix test` — run all tests. Single file: `mix test test/chess/board_test.exs`
 - `mix format --check-formatted` — the **only** quality gate. There is no CI,
   Credo, or Dialyzer. Run `mix format` before committing.
+- `mix escript.build` — build the UCI engine executable `./chess_ex`.
 - `iex -S mix` — REPL; try `Chess.Board.initial() |> Chess.Board.print()`
 
 Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
@@ -111,6 +112,13 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   Returns `{:ok, game}` or `{:error, reason}`, prints narrator-style steps.
   Sets process dictionary flag `:chess_repl_compact` so `Chess.Game` inspects
   compactly; clear with `Chess.Repl.clear/0`.
+- `Chess.UCI` — the UCI protocol core: `handle/2` turns one input line into
+  replies, a search plan or stop/quit; `parse_move/2` and `to_uci/1` convert
+  moves; `plan_go/2` turns the `go` arguments into a depth and a soft time
+  budget. No IO and no processes, so it is tested directly. `Chess.UCI.CLI`
+  is the escript entry point (`main/1`): it reads stdin, writes stdout, runs
+  the search in its own process for `stop`/`isready`, and never prints
+  anything but UCI lines to stdout. `mix escript.build` writes `./chess_ex`.
 - Tests mirror `lib/` one-to-one under `test/chess/`. Plain `ExUnit.Case`, no
   fixtures or services. `test/chess_test.exs` is a dummy leftover from `mix new`.
   `rules_test.exs` includes perft from the initial position

@@ -208,6 +208,48 @@ Least Valuable Attacker). Material and piece-square tables from
 `Chess.Evaluation` score quiet positions. There is no opening book and no
 endgame tablebase; deeper searches are stronger but slower.
 
+## UCI interface
+
+The UCI engine is an escript that speaks the protocol on stdin/stdout, the
+way a GUI expects it:
+
+```sh
+mix escript.build
+./chess_ex
+```
+
+Point a GUI at `./chess_ex`, or run a session by hand:
+
+```sh
+printf 'uci\nisready\nposition startpos moves e2e4\ngo depth 2\n' | ./chess_ex
+```
+
+```
+id name ChessEx 0.1.0
+id author ChessEx contributors
+uciok
+readyok
+info depth 1 score cp 50 time 2 pv b8c6
+info depth 2 score cp 0 time 10 pv b8c6
+bestmove b8c6
+```
+
+The supported commands are `uci`, `isready`, `ucinewgame`, `position`
+(`startpos` or `fen`, with an optional `moves` list), `go`, `stop` and `quit`.
+`go` understands `depth`, `movetime`, `infinite`, and the clock options
+`wtime`, `btime`, `winc`, `binc` and `movestogo`; the clock budget is shared
+out over the moves left and the search deepens until the budget is used. An
+automatic search stops at depth 4; `go depth N` can go deeper, and an explicit
+`depth` wins over any time limit. `infinite` deepens to the automatic maximum
+unless stopped. The search does not advertise `UCI_LimitStrength` or
+`UCI_Elo`, because the engine has no strength setting.
+
+A `go` runs in a process of its own, so `isready`, `stop` and `quit` are
+answered while the engine is thinking. `stop` answers with the best move of
+the last completed iteration. The search itself has no time check inside a
+single iteration, so a time limit is soft: a deeper iteration that has already
+started can overshoot it. Nothing but UCI lines is written to stdout.
+
 ## references
 
 - https://en.wikipedia.org/wiki/Chess
