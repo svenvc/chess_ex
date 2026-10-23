@@ -7,12 +7,24 @@ defmodule Chess.Position do
 
   @files ~w(a b c d e f g h)a
 
+  @doc """
+  Return the files of the board, `:a` to `:h`.
+  """
   def files, do: @files
 
   @ranks Enum.to_list(1..8)
 
+  @doc """
+  Return the ranks of the board, `1` to `8`.
+  """
   def ranks, do: @ranks
 
+  @doc """
+  Create and return the position at the given file and rank.
+
+  The file may be an atom or a 1-based file index. Raises
+  `FunctionClauseError` when the file or the rank is off the board.
+  """
   def new(file, rank) when file in @files and rank in @ranks do
     "#{file}#{rank}" |> String.to_atom()
   end
@@ -51,6 +63,11 @@ defmodule Chess.Position do
   """
   def same_color?(first, second), do: dark?(first) == dark?(second)
 
+  @doc """
+  Parse a two-character square name, as in `"e4"`, and return the position.
+
+  Raises `FunctionClauseError` for anything that is not a square.
+  """
   def from_string(<<letter, digit>>) when letter in ?a..?h and digit in ?1..?8 do
     new(String.to_atom(<<letter>>), String.to_integer(<<digit>>))
   end
@@ -63,11 +80,20 @@ defmodule Chess.Position do
          end)
        end)
 
+  @doc """
+  Return all 64 positions of the board.
+  """
   def all, do: @all
 
+  @doc """
+  Return true if the argument is a position on the board.
+  """
   def valid?(position) when position in @all, do: true
   def valid?(_position), do: false
 
+  @doc """
+  Return the file of a position, `:a` to `:h`.
+  """
   def file(position) when position in [:a1, :a2, :a3, :a4, :a5, :a6, :a7, :a8], do: :a
   def file(position) when position in [:b1, :b2, :b3, :b4, :b5, :b6, :b7, :b8], do: :b
   def file(position) when position in [:c1, :c2, :c3, :c4, :c5, :c6, :c7, :c8], do: :c
@@ -77,6 +103,9 @@ defmodule Chess.Position do
   def file(position) when position in [:g1, :g2, :g3, :g4, :g5, :g6, :g7, :g8], do: :g
   def file(position) when position in [:h1, :h2, :h3, :h4, :h5, :h6, :h7, :h8], do: :h
 
+  @doc """
+  Return the 1-based file index of a position, `1` for the a-file.
+  """
   def file_index(position) when position in [:a1, :a2, :a3, :a4, :a5, :a6, :a7, :a8], do: 1
   def file_index(position) when position in [:b1, :b2, :b3, :b4, :b5, :b6, :b7, :b8], do: 2
   def file_index(position) when position in [:c1, :c2, :c3, :c4, :c5, :c6, :c7, :c8], do: 3
@@ -86,6 +115,9 @@ defmodule Chess.Position do
   def file_index(position) when position in [:g1, :g2, :g3, :g4, :g5, :g6, :g7, :g8], do: 7
   def file_index(position) when position in [:h1, :h2, :h3, :h4, :h5, :h6, :h7, :h8], do: 8
 
+  @doc """
+  Return the rank of a position, `1` to `8`.
+  """
   def rank(position) when position in [:a1, :b1, :c1, :d1, :e1, :f1, :g1, :h1], do: 1
   def rank(position) when position in [:a2, :b2, :c2, :d2, :e2, :f2, :g2, :h2], do: 2
   def rank(position) when position in [:a3, :b3, :c3, :d3, :e3, :f3, :g3, :h3], do: 3
@@ -95,6 +127,9 @@ defmodule Chess.Position do
   def rank(position) when position in [:a7, :b7, :c7, :d7, :e7, :f7, :g7, :h7], do: 7
   def rank(position) when position in [:a8, :b8, :c8, :d8, :e8, :f8, :g8, :h8], do: 8
 
+  @doc """
+  Return true if the position is a dark square.
+  """
   def dark?(position)
       when position in [
              :a1,
@@ -134,6 +169,9 @@ defmodule Chess.Position do
 
   def dark?(_position), do: false
 
+  @doc """
+  Return true if the position is a light square.
+  """
   def light?(position)
       when position in [
              :b1,

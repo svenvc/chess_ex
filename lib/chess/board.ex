@@ -112,6 +112,10 @@ defmodule Chess.Board do
     end)
   end
 
+  @doc """
+  Return the board as text: eight rows from the eighth rank down to the
+  first, with an empty square shown as `.`.
+  """
   def to_ascii(board) do
     board
     |> rows()
@@ -120,5 +124,8 @@ defmodule Chess.Board do
     end)
   end
 
+  @doc """
+  Print the board as text.
+  """
   def print(board), do: IO.puts(to_ascii(board))
 end

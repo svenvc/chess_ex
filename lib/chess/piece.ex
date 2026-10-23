@@ -7,12 +7,21 @@ defmodule Chess.Piece do
 
   @white_pieces ~w(K Q R B N P)a
 
+  @doc """
+  Return the six white pieces.
+  """
   def white_pieces, do: @white_pieces
 
   @black_pieces ~w(k q r b n p)a
 
+  @doc """
+  Return the six black pieces.
+  """
   def black_pieces, do: @black_pieces
 
+  @doc """
+  Return true if the argument is a piece.
+  """
   def valid?(piece) when piece in @black_pieces, do: true
   def valid?(piece) when piece in @white_pieces, do: true
   def valid?(_piece), do: false
@@ -61,27 +70,51 @@ defmodule Chess.Piece do
   def promotion_rank(:white), do: 8
   def promotion_rank(:black), do: 1
 
+  @doc """
+  Return true if the piece is black.
+  """
   def black?(piece) when piece in @black_pieces, do: true
   def black?(_piece), do: false
 
+  @doc """
+  Return true if the piece is white.
+  """
   def white?(piece) when piece in @white_pieces, do: true
   def white?(_piece), do: false
 
+  @doc """
+  Return true if the piece is a king, of either color.
+  """
   def king?(piece) when piece == :k or piece == :K, do: true
   def king?(_piece), do: false
 
+  @doc """
+  Return true if the piece is a queen, of either color.
+  """
   def is_queen?(piece) when piece == :q or piece == :Q, do: true
   def is_queen?(_piece), do: false
 
+  @doc """
+  Return true if the piece is a rook, of either color.
+  """
   def is_rook?(piece) when piece == :r or piece == :R, do: true
   def is_rook?(_piece), do: false
 
+  @doc """
+  Return true if the piece is a bishop, of either color.
+  """
   def is_bishop?(piece) when piece == :b or piece == :B, do: true
   def is_bishop?(_piece), do: false
 
+  @doc """
+  Return true if the piece is a knight, of either color.
+  """
   def is_knight?(piece) when piece == :n or piece == :N, do: true
   def is_knight?(_piece), do: false
 
+  @doc """
+  Return true if the piece is a pawn, of either color.
+  """
   def is_pawn?(piece) when piece == :p or piece == :P, do: true
   def is_pawn?(_piece), do: false
 end
