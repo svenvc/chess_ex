@@ -64,10 +64,14 @@ defmodule Chess.Search do
   looks at a move, the reply and one more move. Deeper searches are stronger
   but grow quickly: depth 3 is the default.
 
-  No opening book and no endgame tablebase are used.
+  ## Opening book
+
+  A small opening book, `Chess.Book`, is consulted before the tree is
+  searched. A book move is returned with a score of `0`. Pass `book: false` to
+  search the position itself; there is no endgame tablebase.
   """
 
-  alias Chess.{Board, Evaluation, Game, Move, Rules}
+  alias Chess.{Board, Book, Evaluation, Game, Move, Rules}
 
   @default_depth 3
   @mate 100_000
@@ -85,6 +89,8 @@ defmodule Chess.Search do
       minimum `1`
     * `:randomize` — pick randomly among moves with the same best score,
       default `true`; with `false` the first best move is used
+    * `:book` — consult `Chess.Book` first, default `true`; a book move scores
+      `0` and is chosen randomly unless `randomize: false`
 
   Returns `{:error, status}` if the game is already over or the side to move
   has no legal move.
@@ -92,25 +98,36 @@ defmodule Chess.Search do
   def best_move(%Game{} = game, opts \\ []) do
     depth = max(Keyword.get(opts, :depth, @default_depth), 1)
     randomize? = Keyword.get(opts, :randomize, true)
+    book? = Keyword.get(opts, :book, true)
 
     case Game.status(game) do
       :ongoing ->
-        moves = Rules.legal_moves(game)
-
-        {move, score} =
-          moves
-          |> order_moves(game)
-          |> Enum.map(fn move ->
-            score = -negamax(Rules.apply(game, move), depth - 1, -@infinity, @infinity, 1)
-            {move, score}
-          end)
-          |> pick_best(randomize?)
-
-        {:ok, move, score}
+        case book_move(game, book?, randomize?) do
+          {:ok, move} -> {:ok, move, 0}
+          :error -> search(game, depth, randomize?)
+        end
 
       status ->
         {:error, status}
     end
+  end
+
+  defp book_move(game, true, randomize?), do: Book.move(game, randomize: randomize?)
+  defp book_move(_game, false, _randomize?), do: :error
+
+  defp search(game, depth, randomize?) do
+    moves = Rules.legal_moves(game)
+
+    {move, score} =
+      moves
+      |> order_moves(game)
+      |> Enum.map(fn move ->
+        score = -negamax(Rules.apply(game, move), depth - 1, -@infinity, @infinity, 1)
+        {move, score}
+      end)
+      |> pick_best(randomize?)
+
+    {:ok, move, score}
   end
 
   ## Search

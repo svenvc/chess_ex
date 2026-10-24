@@ -205,8 +205,10 @@ it uses **negamax** (minimax with a single side-to-move score and a sign flip
 per move) with **alpha-beta pruning**, which skips lines that cannot change
 the result. Captures are ordered first by **MVV-LVA** (Most Valuable Victim,
 Least Valuable Attacker). Material and piece-square tables from
-`Chess.Evaluation` score quiet positions. There is no opening book and no
-endgame tablebase; deeper searches are stronger but slower.
+`Chess.Evaluation` score quiet positions. A small compile-time opening book
+(`Chess.Book`) is consulted before the search and yields a move with score `0`;
+pass `book: false` to search the position itself. There is no endgame
+tablebase; deeper searches are stronger but slower.
 
 ## UCI interface
 

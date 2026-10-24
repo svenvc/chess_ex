@@ -76,7 +76,8 @@ defmodule Chess.Engine do
   alpha-beta search.
 
   The search accepts the options of `Chess.Search.best_move/2`:
-  `:depth` (in plies, default `3`) and `:randomize` (default `true`).
+  `:depth` (in plies, default `3`), `:randomize` (default `true`) and
+  `:book` (default `true`).
 
   Returns `{:error, reason}` if the game is over or has no legal moves.
   """

@@ -72,8 +72,16 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   sign-flipping minimax instead of separate max/min functions) with
   alpha-beta pruning, MVV-LVA capture ordering (Most Valuable Victim, Least
   Valuable Attacker) and mate scores that prefer faster mates. Returns
-  `{:ok, move, score}` in centipawns from the side to move. No opening book,
-  no endgame tablebase, no transposition table.
+  `{:ok, move, score}` in centipawns from the side to move. Consults
+  `Chess.Book` first (disable with `book: false`) and returns a book move with
+  score `0`. No transposition table.
+- `Chess.Book` — a small opening book as a compile-time constant: lines of UCI
+  moves replayed at compile time into a map from the four-field FEN key of a
+  position to its book moves. `move/2` picks randomly (or the first move with
+  `randomize: false`) and returns `:error` once the game leaves the book.
+  A very small curated book makes a disproportionate difference for an engine
+  this simple (sensible first moves, no search at opening, better play) even if
+  coverage is narrow and transpositions outside listed lines fall back to search.
 - `Chess.Evaluation` — static score in centipawns, White-relative (positive =
   White is better): `evaluate/1` (a game or a bare board), `evaluate/2` (score
   from `:white`/`:black`), `breakdown/1` (map of terms: `:material`,

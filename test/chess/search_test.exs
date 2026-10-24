@@ -49,11 +49,29 @@ defmodule Chess.SearchTest do
       refute move == {:d5, :e6}
     end
 
+    test "uses the opening book by default" do
+      game = Game.new()
+
+      assert {:ok, move, 0} = Search.best_move(game)
+      assert move in [{:e2, :e4}, {:d2, :d4}, {:c2, :c4}, {:g1, :f3}]
+    end
+
+    test "book: false searches the position itself" do
+      game = Game.new()
+
+      assert {:ok, move, score} = Search.best_move(game, depth: 1, book: false)
+      assert move in Rules.legal_moves(game)
+      assert is_integer(score)
+    end
+
     test "randomize: false returns the same move on repeated calls" do
       game = Game.new()
 
-      assert {:ok, move, _score} = Search.best_move(game, depth: 1, randomize: false)
-      assert {:ok, ^move, _score} = Search.best_move(game, depth: 1, randomize: false)
+      assert {:ok, move, _score} =
+               Search.best_move(game, depth: 1, randomize: false, book: false)
+
+      assert {:ok, ^move, _score} =
+               Search.best_move(game, depth: 1, randomize: false, book: false)
     end
 
     test "returns an error for checkmate" do
