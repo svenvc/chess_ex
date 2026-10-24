@@ -115,17 +115,39 @@ defmodule Chess.Board do
   @doc """
   Return the board as text: eight rows from the eighth rank down to the
   first, with an empty square shown as `.`.
+  With the option extended: true, print file and rank labels as well as a border.
   """
-  def to_ascii(board) do
-    board
-    |> rows()
-    |> Enum.map_join("\n", fn row ->
-      Enum.map_join(row, " ", fn {_position, piece} -> to_string(piece || ".") end)
-    end)
+  def to_ascii(board, options \\ [extended: false]) do
+    base_board =
+      board
+      |> rows()
+      |> Enum.map(fn row ->
+        Enum.map_join(row, " ", fn {_position, piece} -> to_string(piece || ".") end)
+      end)
+
+    if Keyword.get(options, :extended, false) do
+      rank_labels = ?a..?h |> Enum.map_join(" ", fn c -> <<c>> end)
+      divider = "+#{String.duplicate("-", 17)}+"
+
+      [
+        "    #{rank_labels}",
+        "  #{divider}"
+      ] ++
+        (Enum.zip(base_board, 8..1//-1)
+          |> Enum.map(fn {row, rank} -> "#{rank} | #{row} | #{rank}" end)) ++
+        [
+          "  #{divider}",
+          "    #{rank_labels}"
+        ]
+    else
+      base_board
+    end
+    |> Enum.join("\n")
   end
 
   @doc """
   Print the board as text.
+  With the option extended: true, print file and rank labels as well as a border.
   """
-  def print(board), do: IO.puts(to_ascii(board))
+  def print(board, options \\ [extended: false]), do: IO.puts(to_ascii(board, options))
 end

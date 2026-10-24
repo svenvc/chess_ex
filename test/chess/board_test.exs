@@ -182,4 +182,16 @@ defmodule Chess.BoardTest do
     assert List.last(lines) == "R N B Q K B N R"
     assert Enum.at(lines, 2) == ". . . . . . . ."
   end
+
+  test "to_ascii" do
+    contents =
+      Board.initial()
+      |> Board.to_ascii(extended: true)
+
+    assert contents =~ "a b c d e f g h"
+    assert contents =~ "r n b q k b n r"
+    assert contents =~ "R N B Q K B N R"
+    assert contents =~ "1"
+    assert contents =~ "8"
+  end
 end
