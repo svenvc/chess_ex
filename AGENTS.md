@@ -65,7 +65,7 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   returns `{:ok, game, move}` or `{:error, status}` when terminal; strategies
   `:best` (1-ply via `Evaluation.evaluate/1`, random among ties by default),
   `:random` (uniform from `Rules.legal_moves/1`) and `:search` (delegates to
-  `Chess.Search`, takes `:depth` in plies, default 3). `random_move/1`,
+  `Chess.Search`, takes `:depth` in plies, default 4). `random_move/1`,
   `best_move/1,2` and `search_move/1,2` return `{:ok, move}` or
   `{:error, status}`.
 - `Chess.Search` — depth-limited search for the best move: negamax (one

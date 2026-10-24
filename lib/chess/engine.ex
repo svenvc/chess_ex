@@ -9,7 +9,7 @@ defmodule Chess.Engine do
     * `:search` — a depth-limited search with alpha-beta pruning, delegated to `Chess.Search`
 
   The `:search` strategy accepts a `:depth` option in plies (half-moves),
-  defaulting to `3`. See `Chess.Search` for the search itself.
+  defaulting to `4`. See `Chess.Search` for the search itself.
   """
 
   alias Chess.{Evaluation, Game, Rules, Search}
@@ -76,7 +76,7 @@ defmodule Chess.Engine do
   alpha-beta search.
 
   The search accepts the options of `Chess.Search.best_move/2`:
-  `:depth` (in plies, default `3`), `:randomize` (default `true`) and
+  `:depth` (in plies, default `4`), `:randomize` (default `true`) and
   `:book` (default `true`).
 
   Returns `{:error, reason}` if the game is over or has no legal moves.

@@ -35,7 +35,7 @@ defmodule Chess.UCI do
   @name "ChessEx"
   @author "ChessEx contributors"
 
-  @default_depth 3
+  @default_depth 4
   @max_auto_depth 4
 
   @mate_score 100_000

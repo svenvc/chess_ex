@@ -60,9 +60,9 @@ defmodule Chess.Search do
   ## Depth
 
   `depth` counts plies (half-moves), not full moves. `depth: 1` looks at the
-  side's own moves and then evaluates the resulting positions; `depth: 3`
-  looks at a move, the reply and one more move. Deeper searches are stronger
-  but grow quickly: depth 3 is the default.
+  side's own moves and then evaluates the resulting positions; `depth: 4`
+  looks at a move, the reply, another move and its reply. Deeper searches are
+  stronger but grow quickly: depth 4 is the default.
 
   ## Opening book
 
@@ -73,7 +73,7 @@ defmodule Chess.Search do
 
   alias Chess.{Board, Book, Evaluation, Game, Move, Rules}
 
-  @default_depth 3
+  @default_depth 4
   @mate 100_000
   @infinity 1_000_000
 

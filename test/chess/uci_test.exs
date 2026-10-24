@@ -90,7 +90,7 @@ defmodule Chess.UCITest do
     end
 
     test "asks for a search on go" do
-      assert {:search, %{max_depth: 3, budget_ms: nil}, _state} =
+      assert {:search, %{max_depth: 4, budget_ms: nil}, _state} =
                UCI.handle(UCI.new(), "go")
     end
 
@@ -112,7 +112,7 @@ defmodule Chess.UCITest do
 
   describe "plan_go/2" do
     test "uses the default depth without options" do
-      assert UCI.plan_go([], :white) == %{max_depth: 3, budget_ms: nil}
+      assert UCI.plan_go([], :white) == %{max_depth: 4, budget_ms: nil}
     end
 
     test "honours depth" do
@@ -154,7 +154,7 @@ defmodule Chess.UCITest do
 
     test "ignores unknown options" do
       assert UCI.plan_go(["nodes", "1000", "ponder"], :white) ==
-               %{max_depth: 3, budget_ms: nil}
+               %{max_depth: 4, budget_ms: nil}
     end
   end
 

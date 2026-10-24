@@ -218,8 +218,9 @@ game = Chess.Game.new()
 {:ok, reply} = Chess.Engine.search_move(game, depth: 2, randomize: false)
 ```
 
-`depth` counts plies (half-moves), so `depth: 3` looks at a move, the reply
-and one more move; the default is `3`. `Chess.Search` explains the search:
+`depth` counts plies (half-moves), so `depth: 4` looks at a move, the reply,
+another move and its reply; the default is `4`. `Chess.Search` explains the
+search:
 it uses **negamax** (minimax with a single side-to-move score and a sign flip
 per move) with **alpha-beta pruning**, which skips lines that cannot change
 the result. Captures are ordered first by **MVV-LVA** (Most Valuable Victim,
@@ -246,14 +247,18 @@ printf 'uci\nisready\nposition startpos moves e2e4\ngo depth 2\n' | ./chess_ex
 ```
 
 ```
-id name ChessEx 0.1.0
+id name ChessEx 0.1.2
 id author ChessEx contributors
 uciok
 readyok
-info depth 1 score cp 50 time 2 pv b8c6
-info depth 2 score cp 0 time 10 pv b8c6
-bestmove b8c6
+info depth 1 score cp 0 time 3 pv c7c6
+info depth 2 score cp 0 time 4 pv c7c6
+bestmove c7c6
 ```
+
+`c7c6` (the Caro-Kann Defence) is a book move: replies to `1. e4` come
+straight from `Chess.Book`, so they are reported with score `cp 0` without
+searching.
 
 The supported commands are `uci`, `isready`, `ucinewgame`, `position`
 (`startpos` or `fen`, with an optional `moves` list), `go`, `stop` and `quit`.

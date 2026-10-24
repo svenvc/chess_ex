@@ -56,7 +56,7 @@ Ordered roughly by dependency.
   evaluation-based strategies and plays them via `play/2`.
 - [x] Search: `Chess.Search` is a depth-limited negamax search with alpha-beta
   pruning on top of the evaluation, exposed as the `:search` engine strategy
-  (`depth` in plies, default 3). No opening book or endgame tablebase.
+  (`depth` in plies, default 4). No opening book or endgame tablebase.
 - [x] UCI interface: `Chess.UCI` translates the core commands and
   `Chess.UCI.CLI` is the escript entry point (`mix escript.build`). It speaks
   UCI on stdin/stdout, searches asynchronously so that `stop` and `isready`
@@ -65,8 +65,8 @@ Ordered roughly by dependency.
 
 ## Search notes
 
-- `Chess.Search.best_move/2` searches `depth` plies (`depth: 3` = move, reply,
-  move). The root searches every legal move with a full window so that ties
+- `Chess.Search.best_move/2` searches `depth` plies (`depth: 4` = move, reply,
+  move, reply). The root searches every legal move with a full window so that ties
   can be randomised exactly; the child nodes use alpha-beta.
 - Gotcha: never call `Game.over?/1` or `Game.status/1` inside the search tree.
   Both replay the whole game for the repetition rules, which would dominate
