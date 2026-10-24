@@ -43,6 +43,25 @@ P P P P P P P P
 R N B Q K B N R
 ```
 
+Pass `extended: true` to `Chess.Board.to_ascii/2` (or `Chess.Board.print/2`) to add
+file and rank labels and a border around the board:
+
+```elixir
+iex> Chess.Board.print(Chess.Board.initial(), extended: true)
+    a b c d e f g h
+  +-----------------+
+8 | r n b q k b n r | 8
+7 | p p p p p p p p | 7
+6 | . . . . . . . . | 6
+5 | . . . . . . . . | 5
+4 | . . . . . . . . | 4
+3 | . . . . . . . . | 3
+2 | P P P P P P P P | 2
+1 | R N B Q K B N R | 1
+  +-----------------+
+    a b c d e f g h
+```
+
 A game read from a PGN file. The moves are the moves of the game, in the
 order they were played, and the game itself is the state after the last move:
 

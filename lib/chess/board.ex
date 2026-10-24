@@ -14,6 +14,11 @@ defmodule Chess.Board do
 
   @pieces Piece.white_pieces() ++ Piece.black_pieces()
 
+  # The width of the inside of the border drawn by `to_ascii/2` in its
+  # `extended: true` form: eight squares joined by spaces, plus the padding
+  # on either side.
+  @divider_width 8 * 2 - 1 + 2
+
   @doc """
   Create and return the initial Chess board.
   This is a map of 32 `{position, piece}` entries.
@@ -126,18 +131,18 @@ defmodule Chess.Board do
       end)
 
     if Keyword.get(options, :extended, false) do
-      rank_labels = ?a..?h |> Enum.map_join(" ", fn c -> <<c>> end)
-      divider = "+#{String.duplicate("-", 17)}+"
+      file_labels = Position.files() |> Enum.map_join(" ", &to_string/1)
+      divider = "+#{String.duplicate("-", @divider_width)}+"
 
       [
-        "    #{rank_labels}",
+        "    #{file_labels}",
         "  #{divider}"
       ] ++
         (Enum.zip(base_board, 8..1//-1)
          |> Enum.map(fn {row, rank} -> "#{rank} | #{row} | #{rank}" end)) ++
         [
           "  #{divider}",
-          "    #{rank_labels}"
+          "    #{file_labels}"
         ]
     else
       base_board

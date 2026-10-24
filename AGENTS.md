@@ -33,7 +33,7 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   (32 entries for `Board.initial/0`). Always read squares via `Board.at/2`; it
   accepts a map or a keyword list of `{position, piece}` tuples. Don't access
   the container directly from new code. `Board.rows/1` is the rank-by-rank
-  view that `to_ascii/1` and FEN writing share.
+  view that `to_ascii/2` and FEN writing share.
 - `Chess.Move` — tagged-tuple value type, syntax-only validation via
   `Move.valid?/1`: `{from, to}` normal (incl. captures),
   `{:castle, from, to}` (king squares), `{:en_passant, from, to}`,
