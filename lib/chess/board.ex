@@ -134,7 +134,7 @@ defmodule Chess.Board do
         "  #{divider}"
       ] ++
         (Enum.zip(base_board, 8..1//-1)
-          |> Enum.map(fn {row, rank} -> "#{rank} | #{row} | #{rank}" end)) ++
+         |> Enum.map(fn {row, rank} -> "#{rank} | #{row} | #{rank}" end)) ++
         [
           "  #{divider}",
           "    #{rank_labels}"
