@@ -7,21 +7,47 @@ ChessEx is an Elixir project implementing tools related to Chess, including an e
 Play interactively in IEx with `Chess.Repl`:
 
 ```elixir
-iex> {:ok, game} = Chess.Repl.new()
+iex> {:ok, game} = Chess.Repl.new
+New game, initial position
 r n b q k b n r
-...
+p p p p p p p p
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+. . . . . . . .
+P P P P P P P P
+R N B Q K B N R
+Evaluation: +0.00 for White (material +0.00, positional +0.00)
 White to move.
 {:ok, #Chess.Game<>}
 
-iex> {:ok, game} = Chess.Repl.move(game, "e4")
+iex> {:ok, game} = game |> Chess.Repl.move("e4")
 1. e4
-...
+white pawn from e2 to e4, advances two squares
+r n b q k b n r
+p p p p p p p p
+. . . . . . . .
+. . . . . . . .
+. . . . P . . .
+. . . . . . . .
+P P P P . P P P
+R N B Q K B N R
+Evaluation: +0.00 for White (material +0.00, positional +0.00)
 Black to move.
 {:ok, #Chess.Game<>}
 
-iex> {:ok, game} = Chess.Repl.move(game)  # engine move
-2. ...
-...
+iex> {:ok, game} = game |> Chess.Repl.move # engine move
+2. Nc6
+black knight from b8 to c6
+r . b q k b n r
+p p p p p p p p
+. . n . . . . .
+. . . . . . . .
+. . . . P . . .
+. . . . . . . .
+P P P P . P P P
+R N B Q K B N R
+Evaluation: -0.50 for White (material +0.00, positional -0.50)
 White to move.
 {:ok, #Chess.Game<>}
 
