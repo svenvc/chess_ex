@@ -4,7 +4,9 @@ defmodule Chess.Repl do
 
   `new/0` starts a game and prints the initial position. `move/2` plays a
   manual move given as a SAN string for the side to move. `move/1` lets the
-  engine play for the side to move. All functions return `{:ok, game}` or
+  engine play for the side to move with the `:search` strategy, so the opening
+  book is consulted first; `move/2` also accepts the options of
+  `Chess.Engine.play/2`. All functions return `{:ok, game}` or
   `{:error, reason}` and print a step like `Chess.Narrator`.
   """
 
@@ -36,13 +38,23 @@ defmodule Chess.Repl do
 
   @doc """
   Let the engine make a move for the side to move.
+
+  The move comes from the `:search` strategy: `Chess.Book` supplies the
+  opening book moves and a depth-limited search takes over once the game
+  leaves the book.
+
+  Pass the options of `Chess.Engine.play/2` to `move/2` to change that — for
+  example `strategy: :best` for a quick 1-ply move, `depth: 2` for a shallower
+  search, or `book: false` to skip the opening book.
   """
-  def move(%Game{} = game) do
+  def move(%Game{} = game), do: move(game, [])
+
+  def move(%Game{} = game, opts) when is_list(opts) do
     if Game.over?(game) do
       Narrator.print_last_move(game)
       {:error, Game.status(game)}
     else
-      case Engine.play(game) do
+      case Engine.play(game, Keyword.put_new(opts, :strategy, :search)) do
         {:ok, new_game, _move} ->
           Narrator.print_last_move(new_game)
           {:ok, compact(new_game)}

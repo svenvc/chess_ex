@@ -3,6 +3,9 @@ defmodule Chess.ReplTest do
 
   alias Chess.{Game, Repl, Rules}
 
+  # The first moves of the lines in Chess.Book.
+  @book_first_moves [{:e2, :e4}, {:d2, :d4}, {:c2, :c4}, {:g1, :f3}]
+
   describe "new/0" do
     test "returns a new game and prints the initial position" do
       output =
@@ -95,6 +98,29 @@ defmodule Chess.ReplTest do
           assert {:ok, game2} = Repl.move(game)
           assert length(game2.moves) == 1
           assert game2.side_to_move == :black
+          send(self(), {:game2, game2})
+        end)
+
+      assert_received {:game2, game2}
+      assert hd(game2.moves) in @book_first_moves
+      assert output =~ "Black to move."
+    end
+
+    test "uses the opening book" do
+      ExUnit.CaptureIO.capture_io(fn ->
+        for _ <- 1..10 do
+          assert {:ok, game} = Repl.move(Game.new())
+          assert hd(game.moves) in @book_first_moves
+        end
+      end)
+    end
+
+    test "accepts engine options" do
+      output =
+        ExUnit.CaptureIO.capture_io(fn ->
+          assert {:ok, game} = Repl.move(Game.new(), strategy: :best)
+          assert length(game.moves) == 1
+          assert game.side_to_move == :black
         end)
 
       assert output =~ "Black to move."

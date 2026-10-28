@@ -37,17 +37,17 @@ Black to move.
 {:ok, #Chess.Game<>}
 
 iex> {:ok, game} = game |> Chess.Repl.move # engine move
-2. Nc6
-black knight from b8 to c6
-r . b q k b n r
-p p p p p p p p
-. . n . . . . .
+2. e5
+black pawn from e7 to e5, advances two squares
+r n b q k b n r
+p p p p . p p p
 . . . . . . . .
+. . . . p . . .
 . . . . P . . .
 . . . . . . . .
 P P P P . P P P
 R N B Q K B N R
-Evaluation: -0.50 for White (material +0.00, positional -0.50)
+Evaluation: +0.00 for White (material +0.00, positional +0.00)
 White to move.
 {:ok, #Chess.Game<>}
 
@@ -55,10 +55,16 @@ iex> Chess.Repl.clear()  # restore full game inspection
 :ok
 ```
 
+`move/1` plays the `:search` strategy, so the reply comes from the opening
+book (one of `e5`, `c5`, `e6` or `c6` after `1. e4`) and can differ between
+games. `move/2` also takes engine options, for example
+`Chess.Repl.move(game, strategy: :best)` for a quick 1-ply move or
+`Chess.Repl.move(game, depth: 2)` for a shallower search.
+
 The board of the starting position:
 
 ```elixir
-iex> Chess.Board.print(Chess.Board.initial())
+iex> Chess.Board.initial |> Chess.Board.print
 r n b q k b n r
 p p p p p p p p
 . . . . . . . .
@@ -73,7 +79,7 @@ Pass `extended: true` to `Chess.Board.to_ascii/2` (or `Chess.Board.print/2`) to 
 file and rank labels and a border around the board:
 
 ```elixir
-iex> Chess.Board.print(Chess.Board.initial(), extended: true)
+iex> Chess.Board.initial |> Chess.Board.print(extended: true)
     a b c d e f g h
   +-----------------+
 8 | r n b q k b n r | 8
@@ -156,7 +162,7 @@ the move in words, the board it leads to and the strength of the position, and
 the text ends with how the game stopped:
 
 ```elixir
-iex> pgn |> Chess.Narrator.describe() |> String.split("\n\n") |> Enum.take(3) |> Enum.join("\n\n") |> IO.puts()
+iex> pgn |> Chess.Narrator.print
 Paul Morphy (White) vs Duke Karl / Count Isouard (Black)
 
 Initial position
@@ -222,17 +228,18 @@ Playing a game automatically with the engine:
 ```elixir
 iex> game = Chess.Game.new()
 iex> {:ok, game, move} = Chess.Engine.play(game)
-iex> move
-{:e2, :e4}
+iex> move in [{:b1, :c3}, {:g1, :f3}]
+true
 iex> {:ok, game, _move} = Chess.Engine.play(game, strategy: :random)
 iex> game.side_to_move
 :white
-iex> Chess.Engine.best_move(game)
-{:ok, {:d7, :d5}}
+iex> Chess.Engine.best_move(Chess.Game.new(), randomize: false)
+{:ok, {:b1, :c3}}
 ```
 
 `Chess.Engine.play/2` applies the move and returns `{:ok, game, move}`. It uses
-1-ply evaluation by default (`:best` strategy) and can also pick a `:random`
+1-ply evaluation by default (`:best` strategy): the two knight developments
+score best and one of them is picked randomly. It can also pick a `:random`
 move. When the game is over, it returns `{:error, reason}` with the game
 status.
 

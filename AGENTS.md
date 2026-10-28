@@ -116,7 +116,9 @@ Requires Elixir `~> 1.20` (`mix.exs`). `mix deps.get` is a no-op.
   without moves is described as it stands) or a plain chronological move list.
   A move that is not legal raises `ArgumentError`. `describe_last_move/1`,
   `print_last_move/1`, `describe_status/1` print/describe just the latest step.
-- `Chess.Repl` — IEx helpers: `new/0`, `move/1` (engine), `move/2` (SAN).
+- `Chess.Repl` — IEx helpers: `new/0`, `move/1` (engine, `:search` strategy
+  and thus the opening book first), `move/2` (SAN, or engine options such as
+  `strategy: :best`).
   Returns `{:ok, game}` or `{:error, reason}`, prints narrator-style steps.
   Sets process dictionary flag `:chess_repl_compact` so `Chess.Game` inspects
   compactly; clear with `Chess.Repl.clear/0`.
